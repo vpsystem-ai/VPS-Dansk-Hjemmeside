@@ -13,19 +13,21 @@ import {
 } from "recharts";
 
 /** Konfiguration */
-const SHEET_ID = "1hKzN810Lt4tl73O9FQ46Zj9689Bj8W2qeQ2aUUINH84";
+const SHEET_ID = "1XUh7MYzti9EnVh4w5Jw7vre2dg6nYyWYMH9rg9VhPd0";
 const availableMonths = [
-  { label: "Juni", sheet: "Juni" },
-  { label: "Juli", sheet: "Juli" },
-  { label: "August", sheet: "August" },
-  { label: "September", sheet: "September" },
-  { label: "Oktober", sheet: "Oktober" },
-  { label: "November", sheet: "November" },
-  { label: "December", sheet: "December" },
-  { label: "Januar", sheet: "Januar" },
-  { label: "Februar", sheet: "Februar" },
-  { label: "Marts", sheet: "Marts" },
-  { label: "April", sheet: "April" },
+  { label: "Juni 25", sheet: "Bet tracker_Juni25" },
+  { label: "Juli 25", sheet: "Bet tracker_Juli25" },
+  { label: "August 25", sheet: "Bet tracker_August25" },
+  { label: "September 25", sheet: "Bet tracker_September25" },
+  { label: "Oktober 25", sheet: "Bet tracker_Oktober25" },
+  { label: "November 25", sheet: "Bet tracker_November25" },
+  { label: "December 25", sheet: "Bet tracker_December25" },
+  { label: "Januar 26", sheet: "Bet tracker_Januar26" },
+  { label: "Februar 26", sheet: "Bet tracker_Februar26" },
+  { label: "Marts 26", sheet: "Bet tracker_Marts26" },
+  { label: "April 26", sheet: "Bet tracker_April26" },
+  { label: "Maj 26", sheet: "Bet tracker_Maj26" },
+  { label: "Juni 26", sheet: "Bet tracker_Juni26" },
 ];
 
 /** Hjælpere */
@@ -36,14 +38,35 @@ const canon = (s) =>
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, "")
     .replace(/[^a-z0-9]/g, "");
-const getField = (row, labels) => {
-  const wanted = labels.map(canon);
-  for (const k of Object.keys(row))
-    if (wanted.includes(canon(k))) return row[k];
-  for (const k of Object.keys(row))
-    if (wanted.some((w) => canon(k).includes(w) || w.includes(canon(k))))
-      return row[k];
-  return undefined;
+// Hvert måneds-ark har et dashboard øverst; selve bet-tabellen starter
+// længere nede. Vi finder header-rækken (Dato/Odds/Unit/Status) og læser
+// hvilke nøgler de fire kolonner ligger under, og henter så data derfra.
+const parseSheet = (rows) => {
+  const cols = { dato: null, odds: null, unit: null, status: null };
+  let headerIdx = -1;
+  for (let i = 0; i < rows.length; i++) {
+    const entries = Object.entries(rows[i]);
+    const found = {};
+    for (const [k, v] of entries) {
+      const cv = canon(v);
+      if (cv === "dato") found.dato = k;
+      else if (cv === "odds") found.odds = k;
+      else if (cv === "unit") found.unit = k;
+      else if (cv === "status") found.status = k;
+    }
+    if (found.dato) {
+      Object.assign(cols, found);
+      headerIdx = i;
+      break;
+    }
+  }
+  if (headerIdx === -1) return [];
+  return rows.slice(headerIdx + 1).map((r) => ({
+    dato: r[cols.dato],
+    odds: r[cols.odds],
+    unit: r[cols.unit],
+    status: r[cols.status],
+  }));
 };
 const parseNumber = (v) => {
   if (v == null) return 0;
@@ -107,30 +130,24 @@ export default function BetList() {
       setLoading(true);
       setErrorMsg("");
       try {
-        let rows = [];
+        let parsed = [];
         if (selectedMonth === "Alle") {
           const all = await Promise.all(
             availableMonths.map((m) => fetchMonth(m.sheet))
           );
-          rows = all.flat();
+          parsed = all.flatMap((rows) => parseSheet(rows));
         } else {
-          rows = await fetchMonth(selectedMonth);
+          parsed = parseSheet(await fetchMonth(selectedMonth));
         }
-        const normalized = rows
-          .map((r, idx) => {
-            const dato = getField(r, ["dato", "date"]);
-            const odds = getField(r, ["odds"]);
-            const unitRaw = getField(r, ["unit ", "unit"]);
-            const status = getField(r, ["status"]);
-            return {
-              i: idx,
-              dato: dato || "",
-              datoTS: parseDateDA(dato),
-              odds: parseNumber(odds),
-              unit: parseNumber(unitRaw),
-              status: normStatus(status),
-            };
-          })
+        const normalized = parsed
+          .map((r, idx) => ({
+            i: idx,
+            dato: r.dato || "",
+            datoTS: parseDateDA(r.dato),
+            odds: parseNumber(r.odds),
+            unit: parseNumber(r.unit),
+            status: normStatus(r.status),
+          }))
           .filter((o) => o.datoTS > 0)
           .sort((a, b) => a.datoTS - b.datoTS);
 
@@ -305,7 +322,12 @@ export default function BetList() {
                 </div>
 
                 <div className="text-[var(--ink-2)]">Aktiv måned</div>
-                <div className="font-semibold">{selectedMonth}</div>
+                <div className="font-semibold">
+                  {selectedMonth === "Alle"
+                    ? "Alle"
+                    : availableMonths.find((m) => m.sheet === selectedMonth)
+                        ?.label || selectedMonth}
+                </div>
               </div>
 
               <p className="mt-5 text-base font-extrabold">
