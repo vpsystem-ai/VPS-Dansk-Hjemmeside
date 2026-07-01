@@ -39,7 +39,7 @@ export default function Home() {
 
             {/* Main Headline */}
             <div className="flex justify-center mb-6">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-center">
+              <h1 className="text-[1.7rem] sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-center">
                 <span className="block md:whitespace-nowrap">
                   Tjen på <span className="glow-accent">bookmakernes fejl</span>
                 </span>
@@ -49,7 +49,7 @@ export default function Home() {
               </h1>
             </div>
 
-            <p className="mt-6 text-lg text-[var(--ink-2)] max-w-2xl mx-auto leading-relaxed">
+            <p className="mt-6 text-base sm:text-lg text-[var(--ink-2)] max-w-2xl mx-auto leading-relaxed">
               Vi lærer dig at finde de væddemål, hvor{" "}
               <span className="text-[var(--accent)] font-semibold">
                 oddsene er for høje
