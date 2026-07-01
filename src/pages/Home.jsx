@@ -4,7 +4,7 @@ import TestimonialCards from "../components/TestimonialCards";
 import FAQ from "../components/FAQAccordion";
 import BetList from "../components/BetList";
 import VidalyticsEmbed from "../components/VidalyticsEmbed";
-import HowItWorks from "../components/HowItWorks";
+import WaysToStart from "../components/WaysToStart";
 import SkoolCommunity from "../components/SkoolCommunity";
 import HeroWithAvatars from "../components/HeroWithAvatars";
 import SEO from "../components/SEO";
@@ -81,37 +81,32 @@ export default function Home() {
               </a>
             </div>
             {/* Social proof badges */}
-            <div className="mt-6 md:mt-8 grid grid-cols-3 gap-6 max-w-2xl mx-auto">
-              <div className="text-center">
-                <div className="text-3xl md:text-4xl font-black glow-accent">
-                  1600+
+            <div className="mt-8 md:mt-10 grid grid-cols-3 gap-3 sm:gap-4 max-w-2xl mx-auto">
+              {[
+                { value: "1600+", label: "Aktive medlemmer" },
+                { value: "+EV", label: "Fokus" },
+                { value: "7+", label: "År erfaring" },
+              ].map((s) => (
+                <div
+                  key={s.label}
+                  className="rounded-xl border border-[var(--line)] bg-[var(--panel)] px-2 py-4 sm:py-5"
+                >
+                  <div className="text-2xl md:text-4xl font-black glow-accent">
+                    {s.value}
+                  </div>
+                  <div className="text-xs sm:text-sm text-[var(--muted)] mt-1">
+                    {s.label}
+                  </div>
                 </div>
-                <div className="text-sm text-[var(--muted)] mt-1">
-                  Aktive medlemmer
-                </div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl md:text-4xl font-black glow-accent">
-                  +EV
-                </div>
-                <div className="text-sm text-[var(--muted)] mt-1">Fokus</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl md:text-4xl font-black glow-accent">
-                  7+
-                </div>
-                <div className="text-sm text-[var(--muted)] mt-1">
-                  År erfaring
-                </div>
-              </div>
+              ))}
             </div>
 
             <div className="mt-6 md:mt-10 divider" />
           </div>
         </section>
 
-        {/* HOW IT WORKS */}
-        <HowItWorks />
+        {/* KOM I GANG – 3 indgange */}
+        <WaysToStart />
 
         {/* CTA til overblik-siden */}
         <section className="container-xl pt-6 md:pt-8 relative z-10 text-center">
@@ -227,7 +222,7 @@ export default function Home() {
                   rel="noreferrer"
                   className="btn-accent text-lg px-8 py-4"
                 >
-                  Book afklaringsmøde
+                  Book et gratis intromøde
                 </a>
                 <a
                   href="https://www.skool.com/the-value-profits-system/about"

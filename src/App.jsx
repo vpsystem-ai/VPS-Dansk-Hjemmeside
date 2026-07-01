@@ -6,6 +6,7 @@ import {
 } from "react-router-dom";
 import { lazy, Suspense, useEffect } from "react";
 import Nav from "./components/Nav";
+import AnnouncementBar from "./components/AnnouncementBar";
 import { Analytics } from "@vercel/analytics/react";
 
 // Lazy load pages for better performance
@@ -40,6 +41,7 @@ export default function App() {
 
       <Router>
         <ScrollToTop />
+        <AnnouncementBar />
         <Nav />
         <Suspense fallback={<LoadingFallback />}>
           <main id="main-content" tabIndex={-1}>

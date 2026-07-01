@@ -27,7 +27,7 @@ export default function HeroWithStatsCountUp() {
       {
         id: "reviews",
         prefix: "+",
-        value: 25000000,
+        value: 30000000,
         suffix: " kr.",
         label: "Omsat gennem vores strategi",
       },
@@ -41,7 +41,7 @@ export default function HeroWithStatsCountUp() {
       {
         id: "entrepreneurs",
         prefix: "",
-        value: 3000,
+        value: 5000,
         suffix: "+",
         label: "Dokumenterede Value Bets delt offenligt",
       },

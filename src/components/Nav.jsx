@@ -51,7 +51,7 @@ export default function Nav() {
           rel="noreferrer"
           className="hidden md:inline-flex btn-accent text-sm px-3 py-1.2"
         >
-          Book afklaringsmøde
+          Book intromøde
         </a>
 
         {/* Mobile menu button */}
@@ -134,7 +134,7 @@ export default function Nav() {
               rel="noreferrer"
               className="btn-accent mt-2 text-center"
             >
-              Book afklaringsmøde
+              Book intromøde
             </a>
           </div>
         </div>

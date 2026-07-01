@@ -97,7 +97,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.55rem;
-  border-radius: 0.9rem;
+  border-radius: 0.75rem;
   padding: 0.9rem 1.15rem;
   font-weight: 800;
   transition: transform 0.12s ease, box-shadow 0.12s ease,
@@ -159,7 +159,7 @@ body {
 /* FAQ */
 .faq-item {
   border: 1px solid var(--line);
-  border-radius: 0.9rem;
+  border-radius: 0.85rem;
   background: var(--panel-2);
 }
 .faq-q {
@@ -220,8 +220,7 @@ body {
 }
 .glow-accent {
   color: var(--accent);
-  text-shadow: 0 0 10px rgba(71, 250, 190, 0.7),
-    0 0 22px rgba(71, 250, 190, 0.45);
+  text-shadow: 0 0 14px rgba(71, 250, 190, 0.22);
 }
 
 /* Accent knapper */
@@ -229,15 +228,14 @@ body {
   background: var(--accent);
   color: #0b0c0e;
   font-weight: 800;
-  border-radius: 0.9rem;
+  border-radius: 0.75rem;
   padding: 0.9rem 1.2rem;
-  transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
   border: 1px solid rgba(71, 250, 190, 0.25);
 }
 .btn-accent:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 0 18px rgba(71, 250, 190, 0.55);
-  filter: saturate(115%);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(71, 250, 190, 0.22);
 }
 .btn-accent:active {
   transform: translateY(0);
@@ -247,21 +245,24 @@ body {
   background: transparent;
   color: var(--accent);
   border: 1px solid rgba(71, 250, 190, 0.35);
-  border-radius: 0.9rem;
+  border-radius: 0.75rem;
   padding: 0.85rem 1.2rem;
   font-weight: 700;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 .btn-outline-accent:hover {
-  box-shadow: 0 0 12px rgba(71, 250, 190, 0.45);
+  border-color: rgba(71, 250, 190, 0.6);
+  background: rgba(71, 250, 190, 0.07);
 }
 
 /* Accent links */
 .link-accent {
   color: var(--accent);
   font-weight: 600;
+  transition: opacity 0.15s ease;
 }
 .link-accent:hover {
-  text-shadow: 0 0 8px rgba(71, 250, 190, 0.6);
+  opacity: 0.82;
 }
 
 /* Accent cards */
@@ -270,6 +271,8 @@ body {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 1rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .card-accent::after {
   content: "";
@@ -279,14 +282,14 @@ body {
   pointer-events: none;
   background: radial-gradient(
     60% 60% at 50% 0%,
-    rgba(71, 250, 190, 0.12),
+    rgba(71, 250, 190, 0.08),
     transparent 60%
   );
-  opacity: 0.65;
+  opacity: 0.4;
 }
 .card-accent:hover {
-  border-color: rgba(71, 250, 190, 0.35);
-  box-shadow: 0 0 24px rgba(71, 250, 190, 0.14);
+  border-color: rgba(71, 250, 190, 0.28);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
 }
 
 /* Accent inputs */
@@ -375,10 +378,14 @@ a:focus-visible {
 /* Filter chips */
 .chip {
   padding: 0.5rem 0.8rem;
-  border-radius: 0.7rem;
+  border-radius: 0.75rem;
   border: 1px solid var(--line);
   background: var(--panel-2);
   color: var(--ink-2);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.chip:hover {
+  border-color: rgba(71, 250, 190, 0.4);
 }
 .chip--active {
   color: #0b0c0e;
@@ -395,7 +402,7 @@ a:focus-visible {
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(71, 250, 190, 0.22),
+    rgba(71, 250, 190, 0.13),
     transparent 70%
   );
   filter: blur(90px);
