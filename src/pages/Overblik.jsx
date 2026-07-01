@@ -247,9 +247,13 @@ function AnalysisPanel() {
                   </span>
                 </div>
                 <div className="text-sm text-[var(--muted)]">{a.sub}</div>
-                <p className="mt-2 hidden text-sm leading-relaxed text-[var(--ink-2)] group-hover:block group-focus-within:block">
-                  {a.def}
-                </p>
+                <div className="grid grid-rows-[0fr] transition-[grid-template-rows] duration-300 ease-out group-hover:grid-rows-[1fr] group-focus-within:grid-rows-[1fr]">
+                  <div className="overflow-hidden">
+                    <p className="mt-2 text-sm leading-relaxed text-[var(--ink-2)] opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100">
+                      {a.def}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </li>
@@ -568,9 +572,11 @@ function SureTool({
   note,
   defaultBudget = 1000,
   maxBudget = 5000,
+  fixedBudget = null,
 }) {
   const [odds, setOdds] = useState(defaults);
-  const [budget, setBudget] = useState(defaultBudget);
+  const [budgetState, setBudget] = useState(defaultBudget);
+  const budget = fixedBudget ?? budgetState;
   const setOne = (i, v) => setOdds((prev) => prev.map((x, j) => (j === i ? v : x)));
   const r = computeArb(odds, budget);
 
@@ -592,21 +598,35 @@ function SureTool({
               format={(v) => dk(v, 2)}
             />
           ))}
-          <Slider
-            label="Samlet beløb du vil satse"
-            value={budget}
-            onChange={setBudget}
-            min={100}
-            max={maxBudget}
-            step={100}
-            format={(v) => kr(v)}
-          />
+          {fixedBudget ? (
+            <div className="flex items-baseline justify-between">
+              <span className="text-sm text-[var(--ink-2)]">
+                Dit indskud (fast beløb){" "}
+                <Term def="Du indbetaler ca. 12.500 kr fordelt på bookmakerne – alt efter hvor mange bonusser du claimer. Velkomstbonusserne løfter din kapital til ca. 18-19.000 kr. Dit indskud får du igen; profitten kommer fra bonussen. Se hele profit-forløbet i modellen nedenfor.">
+                  <span className="text-xs">ⓘ</span>
+                </Term>
+              </span>
+              <span className="text-sm font-semibold text-[var(--accent)]">
+                {kr(budget)}
+              </span>
+            </div>
+          ) : (
+            <Slider
+              label="Samlet beløb du vil satse"
+              value={budget}
+              onChange={setBudget}
+              min={100}
+              max={maxBudget}
+              step={100}
+              format={(v) => kr(v)}
+            />
+          )}
         </div>
 
         <p className="text-sm text-[var(--ink-2)]">
           Trick'et: fordel pengene på tværs af bookmakere, så du{" "}
-          <b>vinder det samme uanset hvad der sker</b>. Er markedsprocenten under
-          100%, er der garanteret profit.
+          <b>får mere tilbage, end du satsede – uanset hvem der vinder</b>. Så er
+          profitten garanteret.
         </p>
 
         {note}
@@ -653,7 +673,7 @@ function SureTool({
         <div>
           <StatRow
             label={
-              <Term def="Markedsprocenten er bookmakernes samlede 'pris'. Er den under 100%, kan du dække alle udfald og stadig få flere penge igen, end du satsede – uanset resultatet.">
+              <Term def="Et teknisk mål for bookmakernes samlede 'pris'. Jo lavere, jo bedre for dig. Du behøver ikke tænke på tallet – kig bare på, om du får flere penge igen, end du satsede.">
                 Markedsprocent
               </Term>
             }
@@ -676,8 +696,8 @@ function SureTool({
         </div>
         {!r.isSure && (
           <p className="text-xs text-[var(--muted)]">
-            Skru op for én af odds'ene, indtil markedsprocenten kommer under 100%
-            – så opstår den garanterede profit.
+            Skru op for én af odds'ene, indtil du får mere igen, end du satser –
+            så opstår den garanterede profit.
           </p>
         )}
       </div>
@@ -1021,90 +1041,74 @@ function SurebetPotential() {
 }
 
 /* ---------- potentiale: arbitrage / velkomstbonusser ---------- */
-const WELCOME_BONUSES = [
-  { name: "Bet365", amount: 1000 },
-  { name: "Unibet", amount: 1000 },
-  { name: "Betano", amount: 1000 },
-  { name: "Stake", amount: 100 },
-  { name: "LeoVegas", amount: 1000 },
-  { name: "Bwin", amount: 1000 },
-  { name: "NordicBet", amount: 500 },
-  { name: "888sport", amount: 500 },
-  { name: "Betsson", amount: 250 },
-  { name: "Expekt", amount: 1000 },
-  { name: "Mr Green", amount: 300 },
-  { name: "Tipwin", amount: 800 },
-  { name: "GetLucky", amount: 100 },
-  { name: "Bet25", amount: 250 },
-  { name: "Vbet", amount: 500 },
-  { name: "CampoBet", amount: 1000 },
-  { name: "Betinia", amount: 1000 },
-  { name: "ComeOn", amount: 1000 },
-  { name: "Cashpoint", amount: 500 },
-  { name: "Betmaster", amount: 1000 },
-  { name: "Danske Spil", amount: 25 },
+const BONUS_STEPS = [
+  {
+    t: "Du indbetaler ca. 12.500 kr",
+    s: "fordelt på de ~13 bookmakere (alt efter hvor mange bonusser du claimer).",
+  },
+  {
+    t: "Bonusserne løfter din kapital til ca. 18.-19.000 kr",
+    s: "– gratis penge oveni dit eget indskud.",
+  },
+  {
+    t: "Du gennemspiller det på 2-3 bets",
+    s: "med arbitrage – uden risiko, uanset hvordan kampene ender.",
+  },
+  {
+    t: "Du trækker pengene ud igen",
+    s: "og sidder tilbage med ca. 4.-5.000 kr i ren profit. Pr. person.",
+  },
 ];
 
 function BonusPotential() {
-  // sortér bonusserne så man "tager de bedste tilbud først"
-  const sorted = [...WELCOME_BONUSES].sort((a, b) => b.amount - a.amount);
-  const totalCount = sorted.length;
-  const [numBooks, setNumBooks] = useState(totalCount);
-  const [conv, setConv] = useState(40); // hvor stor en del du beholder som profit
-  const [accounts, setAccounts] = useState(1);
-  const pool = sorted.slice(0, numBooks).reduce((a, b) => a + b.amount, 0);
-  const total = (pool * conv) / 100 * accounts;
+  const [perPerson, setPerPerson] = useState(5500);
+  const [persons, setPersons] = useState(1);
+  const total = perPerson * persons;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_1fr]">
       <div className="space-y-4">
         <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-5">
-          <p className="text-sm text-[var(--ink-2)]">
-            Du bruger <b className="text-[var(--ink)]">{numBooks} af {totalCount}</b>{" "}
-            danske bookmakere – tilsammen
+          <p className="mb-3 text-xs font-bold uppercase tracking-wide text-[var(--muted)]">
+            Sådan fungerer det
           </p>
-          <p className="text-2xl font-black text-[var(--ink)]">{kr(pool)}</p>
-          <p className="mt-1 text-xs text-[var(--muted)]">
-            i gratis velkomstbonusser. Med arbitrage kan du gennemspille dem og
-            beholde en stor del af beløbet som sikker profit.
-          </p>
+          <ol className="space-y-3">
+            {BONUS_STEPS.map((step, i) => (
+              <li key={i} className="flex gap-3">
+                <span
+                  className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                  style={{ background: `${GOOD}22`, color: GOOD }}
+                >
+                  {i + 1}
+                </span>
+                <span className="text-sm text-[var(--ink-2)]">
+                  <b className="text-[var(--ink)]">{step.t}</b> {step.s}
+                </span>
+              </li>
+            ))}
+          </ol>
         </div>
 
         <div className="space-y-4 rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-5">
           <Slider
-            label="Antal bookmakere du bruger"
-            help="Der er velkomstbonusser hos mange bookmakere. Vælg hvor mange du vil hente – vi regner med de største bonusser først. Alt er et forsigtigt estimat."
-            value={numBooks}
-            onChange={(v) => setNumBooks(Math.round(v))}
-            min={1}
-            max={totalCount}
-            step={1}
-            format={(v) => `${v} stk.`}
+            label="Profit pr. person"
+            help="Hvor meget du sidder tilbage med efter at have gennemspillet bonusserne og trukket dit indskud ud igen. I snit omkring 5.500 kr, og op til ca. 7.000 kr når du udnytter alle bookmakerne optimalt."
+            value={perPerson}
+            onChange={(v) => setPerPerson(Math.round(v))}
+            min={3000}
+            max={7000}
+            step={250}
+            format={(v) => kr(v)}
           />
           <Slider
-            label="Hvor meget af bonussen beholder du?"
-            help="En bonus kan ikke bare hæves – den skal først gennemspilles. Med arbitrage laver du den om til rigtige penge, men taber en lille bid undervejs. Typisk beholder du 40–70% som sikker profit. Vi bruger et forsigtigt estimat."
-            value={conv}
-            onChange={setConv}
-            min={30}
-            max={80}
-            step={5}
-            format={(v) => pct(v, 0)}
-          />
-          <p className="text-xs text-[var(--muted)]">
-            = du beholder ca.{" "}
-            <b className="text-[var(--accent)]">{kr((pool * conv) / 100)}</b> af de{" "}
-            {kr(pool)} som sikker profit (pr. konto).
-          </p>
-          <Slider
-            label="Antal konti (fx dig, partner, ven)"
-            help="Har flere i din husstand egne konti, kan I hver især hente bonusserne. Det ganger potentialet op. Husk altid at følge den enkelte bookmakers regler."
-            value={accounts}
-            onChange={(v) => setAccounts(Math.round(v))}
+            label="Antal personer (dig + andre du hjælper)"
+            help="Hjælper du andre igennem processen – et 'kundehold' – tjener hver person deres egne 4-5.000 kr. Det ganger dit potentiale op, og du kan gentage det uge efter uge."
+            value={persons}
+            onChange={(v) => setPersons(Math.round(v))}
             min={1}
-            max={3}
+            max={5}
             step={1}
-            format={(v) => `${v} ${v === 1 ? "konto" : "konti"}`}
+            format={(v) => `${v} ${v === 1 ? "person" : "personer"}`}
           />
         </div>
       </div>
@@ -1112,44 +1116,44 @@ function BonusPotential() {
       <div className="space-y-4 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-6">
         <div>
           <p className="text-xs font-bold uppercase tracking-wide text-[var(--muted)]">
-            Estimeret sikker profit fra bonusser
+            Estimeret profit {persons > 1 ? "i alt" : ""} (skattefrit)
           </p>
           <p className="text-4xl font-black tracking-tight text-[var(--accent)] sm:text-5xl">
             {dk(total, 0)} DKK
           </p>
         </div>
 
-        {/* visuel: bonuspulje vs. sikret profit */}
-        <div className="space-y-3">
-          <div>
-            <div className="mb-1 flex justify-between text-xs text-[var(--muted)]">
-              <span>Samlet bonuspulje{accounts > 1 ? ` × ${accounts}` : ""}</span>
-              <span>{kr(pool * accounts)}</span>
-            </div>
-            <div className="h-3 w-full overflow-hidden rounded-full bg-[var(--panel-2)]">
-              <div className="h-full rounded-full bg-[var(--line)]" style={{ width: "100%" }} />
-            </div>
-          </div>
-          <div>
-            <div className="mb-1 flex justify-between text-xs">
-              <span className="text-[var(--muted)]">Din sikre profit</span>
-              <span className="font-semibold" style={{ color: GOOD }}>
-                {kr(total)}
-              </span>
-            </div>
-            <div className="h-3 w-full overflow-hidden rounded-full bg-[var(--panel-2)]">
-              <div
-                className="h-full rounded-full"
-                style={{ width: `${conv}%`, background: GOOD }}
-              />
-            </div>
-          </div>
+        <div className="border-t border-[var(--line)] pt-3">
+          <StatRow label="Profit pr. person" value={kr(perPerson)} />
+          <StatRow
+            label="Antal personer"
+            value={`${persons} ${persons === 1 ? "person" : "personer"}`}
+          />
+          <StatRow
+            label="Samlet profit"
+            value={kr(total)}
+            strong
+            color={GOOD}
+          />
+        </div>
+
+        <div
+          className="rounded-xl border p-4 text-sm leading-relaxed"
+          style={{
+            borderColor: `${GOOD}55`,
+            background: `${GOOD}12`,
+            color: "var(--ink-2)",
+          }}
+        >
+          👥 <b className="text-[var(--ink)]">Kør et kundehold:</b> hjælper du
+          andre igennem processen, kan du tjene omkring{" "}
+          <b className="text-[var(--accent)]">12.000 kr på cirka en uge</b> – og
+          gentage det, så længe du vil hjælpe nye i gang.
         </div>
 
         <p className="text-xs text-[var(--muted)]">
-          Forsigtigt estimat – uden risiko for at tabe. Gennemspiller du bonusserne
-          hos flere bookmakere (og evt. flere konti i husstanden), vokser beløbet.
-          Følg altid den enkelte bookmakers regler.
+          Uden risiko for at tabe – dit indskud får du igen, og profitten kommer
+          fra de gratis bonusser. Følg altid den enkelte bookmakers regler.
         </p>
       </div>
     </div>
@@ -1298,7 +1302,7 @@ export default function Overblik() {
                 <Term def="At gennemspille en bonus betyder at satse den et bestemt antal gange, før den kan hæves som rigtige penge. Med arbitrage dækker du alle udfald undervejs, så bonussen bliver til sikker profit.">
                   gennemspille
                 </Term>{" "}
-                dem via arbitrage og sikre dig profitten – stort set uden risiko.
+                dem via arbitrage og sikre dig profitten – uden risiko.
               </>
             }
             labels={[
@@ -1307,8 +1311,7 @@ export default function Overblik() {
               { key: "2", name: "2 – Udesejr", book: "Bookmaker 3" },
             ]}
             defaults={[3.2, 3.6, 2.7]}
-            defaultBudget={5000}
-            maxBudget={25000}
+            fixedBudget={12500}
             note={
               <div
                 className="rounded-xl border p-4 text-sm leading-relaxed"
@@ -1319,10 +1322,10 @@ export default function Overblik() {
                 }}
               >
                 💰 <b className="text-[var(--ink)]">Sådan ser det ud i praksis:</b>{" "}
-                Udnytter du velkomstbonusserne hos alle de danske bookmakere med
-                denne metode, kan du typisk sikre dig{" "}
-                <b className="text-[var(--accent)]">4.000–6.000 kr</b> i profit –
-                stort set uden risiko.
+                Udnytter du velkomstbonusserne hos alle de ~13 danske bookmakere
+                med denne metode, kan du typisk sikre dig{" "}
+                <b className="text-[var(--accent)]">5.-7.000 kr</b> i garanteret
+                profit pr. person – uden risiko.
               </div>
             }
           />
@@ -1345,6 +1348,26 @@ export default function Overblik() {
             </header>
             <BonusPotential />
           </section>
+
+          <div className="mt-8 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-6">
+            <h3 className="mb-2 flex items-center gap-2 text-lg font-bold">
+              ⚙️ Ser det nemt ud? Det er meningen
+            </h3>
+            <p className="text-sm leading-relaxed text-[var(--ink-2)]">
+              Selve princippet er enkelt – men bag ved ligger der et system, der
+              skal passe sammen: du skal ramme de rigtige odds, den rigtige
+              timing og de rigtige bookmakere, holde styr på indbetalinger og
+              gennemspil, og undgå de fejl, der ellers æder profitten. Gør du det
+              på må og få, går det galt.
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-[var(--ink-2)]">
+              Det er præcis dét, vores{" "}
+              <b className="text-[var(--accent)]">system og videomateriale</b>{" "}
+              tager sig af. Vi guider dig skridt for skridt, så du altid ved
+              nøjagtig hvad du skal gøre – og du kun skal bruge tiden på at
+              placere dine bets.
+            </p>
+          </div>
         </>
       )}
 
