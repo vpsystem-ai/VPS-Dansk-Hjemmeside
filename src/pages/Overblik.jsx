@@ -353,9 +353,10 @@ function ValueTool() {
           <Horizon kind="long" />
         </div>
         <p className="text-[var(--ink-2)]">
-          <b className="text-[var(--ink)]">Value betting</b> er kernen i vores
-          system – det er her, den store, langsigtede profit ligger. Det{" "}
-          handler om at satse, når{" "}
+          <b className="text-[var(--ink)]">Value betting</b> (også kaldet{" "}
+          <b className="text-[var(--ink)]">+EV betting</b> eller EV+ betting – det
+          er præcis det samme) er kernen i vores system – det er her, den store,
+          langsigtede profit ligger. Det handler om at satse, når{" "}
           <Term def="En bookmaker er et spilfirma (fx Bet365, Unibet eller Betano), der tilbyder odds og tager imod dine væddemål.">
             bookmakeren
           </Term>{" "}
@@ -413,7 +414,11 @@ function ValueTool() {
 
       {/* resultat */}
       <div className="space-y-4 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-5">
-        <Verdict ok={hasValue} okText="VALUE BET" noText="INGEN VALUE" />
+        <Verdict
+          ok={hasValue}
+          okText="VALUE BET – skalerbar profit"
+          noText="INGEN VALUE"
+        />
 
         <div className="mt-2">
           <StatRow label="Bookmakerens odds" value={dk(odds)} />
@@ -1236,8 +1241,11 @@ export default function Overblik() {
                 </span>
                 <b className="text-[var(--ink)]">Surebetting</b> (også kaldet
                 arbitrage) er betting <b className="text-[var(--accent)]">uden
-                risiko</b>. Det er en god måde at komme i gang og hente hurtige,
-                sikre gevinster – men det er mere kortsigtet end value betting. To{" "}
+                risiko</b>. Det er samtidig den <b className="text-[var(--ink)]">nemmeste
+                at forstå</b> – men også den strategi, vi{" "}
+                <b className="text-[var(--ink)]">mindst anbefaler</b>. Ikke fordi
+                den ikke virker, men fordi den er kortsigtet og giver mindst. Den
+                er dog et rigtig godt sted at starte. To{" "}
                 <Term def="En bookmaker er et spilfirma (fx Bet365, Unibet eller Betano), der tilbyder odds og tager imod dine væddemål.">
                   bookmakere
                 </Term>{" "}
