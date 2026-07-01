@@ -40,20 +40,22 @@ export default function Home() {
             {/* Main Headline */}
             <div className="flex justify-center mb-6">
               <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-center">
-                <span className="block md:whitespace-nowrap">Skab en <span className="glow-accent">Stabil indkomst</span> <span className="text-[var(--ink)]">gennem et system,</span></span>
+                <span className="block md:whitespace-nowrap">
+                  Tjen på <span className="glow-accent">bookmakernes fejl</span>
+                </span>
                 <span className="block text-[var(--ink)] md:whitespace-nowrap">
-                  der udnytter <span className="glow-accent">fejl </span>i det globale marked
+                  med et gennemtestet system
                 </span>
               </h1>
             </div>
 
             <p className="mt-6 text-lg text-[var(--ink-2)] max-w-2xl mx-auto leading-relaxed">
-              En dokumenteret, disciplineret strategi til at identificere{" "}
+              Vi lærer dig at finde de væddemål, hvor{" "}
               <span className="text-[var(--accent)] font-semibold">
-                +EV væddemål
+                oddsene er for høje
               </span>{" "}
-              og bygge langsigtet profit. Få adgang til komplet kursus,
-              værktøjer og community.
+              – og gøre det til profit over tid. Få adgang til kursus, værktøjer
+              og community.
             </p>
 
             {/* VIDEO */}
