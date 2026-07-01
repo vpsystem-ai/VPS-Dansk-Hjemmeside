@@ -602,7 +602,7 @@ function SureTool({
             <div className="flex items-baseline justify-between">
               <span className="text-sm text-[var(--ink-2)]">
                 Dit indskud (fast beløb){" "}
-                <Term def="Du indbetaler ca. 12.500 kr fordelt på bookmakerne – alt efter hvor mange bonusser du claimer. Velkomstbonusserne løfter din kapital til ca. 18-19.000 kr. Dit indskud får du igen; profitten kommer fra bonussen. Se hele profit-forløbet i modellen nedenfor.">
+                <Term def="Du indbetaler ca. 10.700 kr fordelt på de 16 bookmakere. Velkomstbonusserne (også ca. 10.700 kr) løfter din samlede kapital til ca. 21.000 kr. Dit indskud får du igen; profitten kommer fra bonussen. Se hele profit-forløbet i modellen nedenfor.">
                   <span className="text-xs">ⓘ</span>
                 </Term>
               </span>
@@ -1043,12 +1043,12 @@ function SurebetPotential() {
 /* ---------- potentiale: arbitrage / velkomstbonusser ---------- */
 const BONUS_STEPS = [
   {
-    t: "Du indbetaler ca. 12.500 kr",
-    s: "fordelt på de ~13 bookmakere (alt efter hvor mange bonusser du claimer).",
+    t: "Du indbetaler ca. 10.700 kr",
+    s: "fordelt på de 16 bookmakere (alt efter hvor mange bonusser du claimer).",
   },
   {
-    t: "Bonusserne løfter din kapital til ca. 18.-19.000 kr",
-    s: "– gratis penge oveni dit eget indskud.",
+    t: "Bonusserne løfter din kapital til ca. 21.000 kr",
+    s: "– ca. 10.700 kr i gratis bonusser oveni dit eget indskud.",
   },
   {
     t: "Du gennemspiller det på 2-3 bets",
@@ -1311,7 +1311,7 @@ export default function Overblik() {
               { key: "2", name: "2 – Udesejr", book: "Bookmaker 3" },
             ]}
             defaults={[3.2, 3.6, 2.7]}
-            fixedBudget={12500}
+            fixedBudget={10700}
             note={
               <div
                 className="rounded-xl border p-4 text-sm leading-relaxed"
@@ -1322,7 +1322,7 @@ export default function Overblik() {
                 }}
               >
                 💰 <b className="text-[var(--ink)]">Sådan ser det ud i praksis:</b>{" "}
-                Udnytter du velkomstbonusserne hos alle de ~13 danske bookmakere
+                Udnytter du velkomstbonusserne hos alle de 16 danske bookmakere
                 med denne metode, kan du typisk sikre dig{" "}
                 <b className="text-[var(--accent)]">5.-7.000 kr</b> i garanteret
                 profit pr. person – uden risiko.
