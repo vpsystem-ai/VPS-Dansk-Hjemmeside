@@ -826,7 +826,7 @@ function CompoundTool() {
               Justering af indsats
             </span>
             <span className="text-sm font-semibold text-[var(--ink)]">
-              Hver måned (~250 bets)
+              Hver måned (~250-500 bets)
             </span>
           </div>
         </div>
@@ -1330,9 +1330,10 @@ export default function Overblik() {
             }
           />
           <p className="mt-4 text-xs text-[var(--muted)]">
-            Fodnote: “Surebetting” og “arbitrage” betyder reelt det samme –
-            garanteret profit ved at dække alle udfald. Vi viser det bare på hhv.
-            2- og 3-vejs markeder.
+            Fodnote: “Surebetting” og “arbitrage” bygger på samme princip –
+            garanteret profit ved at dække alle udfald. Forskellen er, at vi ved
+            arbitrage udnytter bookmakernes velkomstbonusser til at skabe
+            profitten.
           </p>
 
           <section className="mt-12 border-t border-[var(--line)] pt-8">
@@ -1363,7 +1364,10 @@ export default function Overblik() {
             <p className="mt-3 text-sm leading-relaxed text-[var(--ink-2)]">
               Det er præcis dét, vores{" "}
               <b className="text-[var(--accent)]">system og videomateriale</b>{" "}
-              tager sig af. Vi guider dig skridt for skridt, så du altid ved
+              tager sig af. Vi har gjort det{" "}
+              <b className="text-[var(--ink)]">nærmest automatisk for dig</b> – det
+              hele er sat i system og kører, så du ikke skal regne eller holde
+              styr på noget. Vi guider dig skridt for skridt, så du altid ved
               nøjagtig hvad du skal gøre – og du kun skal bruge tiden på at
               placere dine bets.
             </p>
