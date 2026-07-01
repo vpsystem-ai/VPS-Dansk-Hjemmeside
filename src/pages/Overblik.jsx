@@ -1385,7 +1385,10 @@ export default function Overblik() {
 
       {/* rente-rente / compounding – kun for value betting */}
       {tab === "value" && (
-        <section className="mt-16 border-t border-[var(--line)] pt-10">
+        <section
+          id="potentiale"
+          className="mt-16 scroll-mt-24 border-t border-[var(--line)] pt-10"
+        >
           <header className="mb-6 max-w-2xl space-y-2">
             <span
               className="inline-block rounded-full px-3 py-1 text-xs font-bold"

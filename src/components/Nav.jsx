@@ -22,12 +22,12 @@ export default function Nav() {
           >
             Sådan virker det
           </Link>
-          <a
-            href="#video"
+          <Link
+            to="/#video"
             className="link-accent hover:text-[var(--accent)] transition-colors"
           >
             Se demo
-          </a>
+          </Link>
           <a
             href="https://www.skool.com/the-value-profits-system/about"
             target="_blank"
@@ -36,12 +36,12 @@ export default function Nav() {
           >
             Gratis community
           </a>
-          <a
-            href="#testimonials"
+          <Link
+            to="/#testimonials"
             className="link-accent hover:text-[var(--accent)] transition-colors"
           >
             Anmeldelser
-          </a>
+          </Link>
         </div>
 
         {/* Desktop CTA */}
@@ -105,13 +105,13 @@ export default function Nav() {
             >
               Sådan virker det
             </Link>
-            <a
-              href="#video"
+            <Link
+              to="/#video"
               className="link-accent py-2"
               onClick={() => setMobileMenuOpen(false)}
             >
               Se demo
-            </a>
+            </Link>
             <a
               href="https://www.skool.com/the-value-profits-system/about"
               target="_blank"
@@ -121,13 +121,13 @@ export default function Nav() {
             >
               Gratis community
             </a>
-            <a
-              href="#testimonials"
+            <Link
+              to="/#testimonials"
               className="link-accent py-2"
               onClick={() => setMobileMenuOpen(false)}
             >
               Anmeldelser
-            </a>
+            </Link>
             <a
               href="https://calendly.com/vpsystem1/30min"
               target="_blank"

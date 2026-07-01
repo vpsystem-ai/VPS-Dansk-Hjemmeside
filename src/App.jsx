@@ -15,12 +15,25 @@ const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Overblik = lazy(() => import("./pages/Overblik"));
 
-// Scroll til toppen ved sideskift
+// Scroll til toppen ved sideskift – eller til et anker (#id) hvis der er et
 function ScrollToTop() {
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
   useEffect(() => {
+    if (hash) {
+      let tries = 0;
+      const tryScroll = () => {
+        const el = document.getElementById(hash.slice(1));
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else if (tries++ < 20) {
+          setTimeout(tryScroll, 100);
+        }
+      };
+      tryScroll();
+      return;
+    }
     window.scrollTo(0, 0);
-  }, [pathname]);
+  }, [pathname, hash]);
   return null;
 }
 

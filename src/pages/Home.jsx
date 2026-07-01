@@ -57,7 +57,7 @@ export default function Home() {
             </p>
 
             {/* VIDEO */}
-            <section id="video" className="container-xl pt-4 md:pt-6 relative z-10">
+            <section id="video" className="container-xl pt-4 md:pt-6 relative z-10 scroll-mt-24">
               <div className="max-w-3xl mx-auto">
                 <VidalyticsEmbed />
               </div>
@@ -164,6 +164,18 @@ export default function Home() {
             </p>
           </div>
           <BetList />
+
+          <div className="mt-8 text-center">
+            <p className="text-[var(--ink-2)] mb-4">
+              Nysgerrig på hvad du selv kan tjene?
+            </p>
+            <Link
+              to="/overblik#potentiale"
+              className="inline-flex items-center justify-center rounded-lg border-2 border-[var(--accent)] bg-[#47fabe1a] px-6 py-3 text-lg font-semibold text-[var(--accent)] transition-colors hover:bg-[#47fabe2e]"
+            >
+              Beregn selv din forventlige profit →
+            </Link>
+          </div>
         </section>
 
         {/* REAL RESULTS SHOWCASE */}
@@ -190,7 +202,7 @@ export default function Home() {
         <SkoolCommunity />
 
         {/* TESTIMONIALS */}
-        <section id="testimonials" className="container-xl pt-8 md:pt-12 relative z-10">
+        <section id="testimonials" className="container-xl pt-8 md:pt-12 relative z-10 scroll-mt-24">
           <div className="max-w-3xl mx-auto text-center mb-8">
             <h2 className="h2 glow-accent">Hør flere historier inde på skool.</h2>
           </div>
