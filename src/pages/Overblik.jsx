@@ -1046,10 +1046,13 @@ const WELCOME_BONUSES = [
 ];
 
 function BonusPotential() {
-  const pool = WELCOME_BONUSES.reduce((a, b) => a + b.amount, 0);
-  const count = WELCOME_BONUSES.length;
-  const [conv, setConv] = useState(40); // hvor stor en del du sikrer som profit
+  // sortér bonusserne så man "tager de bedste tilbud først"
+  const sorted = [...WELCOME_BONUSES].sort((a, b) => b.amount - a.amount);
+  const totalCount = sorted.length;
+  const [numBooks, setNumBooks] = useState(totalCount);
+  const [conv, setConv] = useState(40); // hvor stor en del du beholder som profit
   const [accounts, setAccounts] = useState(1);
+  const pool = sorted.slice(0, numBooks).reduce((a, b) => a + b.amount, 0);
   const total = (pool * conv) / 100 * accounts;
 
   return (
@@ -1057,21 +1060,30 @@ function BonusPotential() {
       <div className="space-y-4">
         <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-5">
           <p className="text-sm text-[var(--ink-2)]">
-            Hos de danske bookmakere er der lige nu{" "}
-            <b className="text-[var(--ink)]">{count} velkomstbonusser</b> at hente
-            – tilsammen
+            Du bruger <b className="text-[var(--ink)]">{numBooks} af {totalCount}</b>{" "}
+            danske bookmakere – tilsammen
           </p>
           <p className="text-2xl font-black text-[var(--ink)]">{kr(pool)}</p>
           <p className="mt-1 text-xs text-[var(--muted)]">
-            i gratis bonusser. Med arbitrage kan du gennemspille dem og sikre en
-            stor del af beløbet som profit.
+            i gratis velkomstbonusser. Med arbitrage kan du gennemspille dem og
+            beholde en stor del af beløbet som sikker profit.
           </p>
         </div>
 
         <div className="space-y-4 rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-5">
           <Slider
-            label="Hvor stor en del sikrer du?"
-            help="Med arbitrage dækker du alle udfald, så du beholder størstedelen af bonussen som profit. Typisk 40–70% – vi holder os til et forsigtigt estimat."
+            label="Antal bookmakere du bruger"
+            help="Der er velkomstbonusser hos mange bookmakere. Vælg hvor mange du vil hente – vi regner med de største bonusser først. Alt er et forsigtigt estimat."
+            value={numBooks}
+            onChange={(v) => setNumBooks(Math.round(v))}
+            min={1}
+            max={totalCount}
+            step={1}
+            format={(v) => `${v} stk.`}
+          />
+          <Slider
+            label="Hvor meget af bonussen beholder du?"
+            help="En bonus kan ikke bare hæves – den skal først gennemspilles. Med arbitrage laver du den om til rigtige penge, men taber en lille bid undervejs. Typisk beholder du 40–70% som sikker profit. Vi bruger et forsigtigt estimat."
             value={conv}
             onChange={setConv}
             min={30}
@@ -1079,6 +1091,11 @@ function BonusPotential() {
             step={5}
             format={(v) => pct(v, 0)}
           />
+          <p className="text-xs text-[var(--muted)]">
+            = du beholder ca.{" "}
+            <b className="text-[var(--accent)]">{kr((pool * conv) / 100)}</b> af de{" "}
+            {kr(pool)} som sikker profit (pr. konto).
+          </p>
           <Slider
             label="Antal konti (fx dig, partner, ven)"
             help="Har flere i din husstand egne konti, kan I hver især hente bonusserne. Det ganger potentialet op. Husk altid at følge den enkelte bookmakers regler."
@@ -1232,14 +1249,27 @@ export default function Overblik() {
           />
 
           <section className="mt-12 border-t border-[var(--line)] pt-8">
-            <header className="mb-6 max-w-2xl space-y-2">
+            <header className="mb-6 max-w-2xl space-y-3">
               <h2 className="text-2xl font-black tracking-tight sm:text-3xl">
                 Hvad kan du tjene med surebetting?
               </h2>
               <p className="text-[var(--ink-2)]">
-                Hver surebet giver en lille, sikker profit. Prøv at se, hvad det
-                bliver til, når du laver mange af dem:
+                Hver surebet giver en lille, sikker profit – prøv at se, hvad det bliver til over mange spil.
               </p>
+              <div
+                className="rounded-xl border p-4 text-sm leading-relaxed"
+                style={{
+                  borderColor: "#ffca5744",
+                  background: "#ffca571a",
+                  color: "var(--ink-2)",
+                }}
+              >
+                ⚠️ <b className="text-[var(--ink)]">Vær opmærksom:</b> surebetting
+                giver typisk kun en lav profit, og gør du det for meget, risikerer
+                du at bookmakerne begrænser eller lukker din konto. Derfor bruger
+                vi det mest til at komme i gang – på den lange bane er{" "}
+                <b className="text-[var(--accent)]">value betting</b> langt bedre.
+              </div>
             </header>
             <SurebetPotential />
           </section>
