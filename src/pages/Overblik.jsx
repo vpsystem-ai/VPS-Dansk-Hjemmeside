@@ -1420,7 +1420,7 @@ export default function Overblik() {
           Eller se vores <b className="text-[var(--ink)]">gratis kursus</b> igennem
           inde på appen eller på Skool.
         </p>
-        <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <div className="flex flex-col flex-wrap items-center justify-center gap-3 sm:flex-row">
           <a
             href={APP_SIGNUP_URL}
             target="_blank"
@@ -1430,23 +1430,23 @@ export default function Overblik() {
             Opret gratis bruger nu
           </a>
           <a
-            href={SKOOL_URL}
+            href={CALENDLY_URL}
             target="_blank"
             rel="noreferrer"
-            className="link-accent inline-flex px-6 py-3 text-sm"
+            className="inline-flex items-center justify-center rounded-lg border-2 border-[var(--accent)] bg-[#47fabe1a] px-6 py-3 text-base font-semibold text-[var(--accent)] transition-colors hover:bg-[#47fabe2e]"
           >
-            Se det gratis kursus på Skool
+            Se om det giver mening for dig?
           </a>
         </div>
         <p className="mt-4 text-sm text-[var(--muted)]">
-          Vil du hellere tale med os?{" "}
+          Eller se vores gratis kursus{" "}
           <a
-            href={CALENDLY_URL}
+            href={SKOOL_URL}
             target="_blank"
             rel="noreferrer"
             className="link-accent underline"
           >
-            Book et gratis afklaringsmøde
+            på Skool
           </a>
         </p>
       </div>

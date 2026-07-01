@@ -65,11 +65,17 @@ export default function Home() {
 
             {/* CTA Buttons */}
             <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4 scale-75 md:scale-[1.125]">
+              <Link
+                to="/overblik"
+                className="inline-flex items-center justify-center rounded-lg border-2 border-[var(--accent)] bg-[#47fabe1a] px-6 py-3 text-lg font-semibold text-[var(--accent)] transition-colors hover:bg-[#47fabe2e]"
+              >
+                Forstå det på 30 sekunder →
+              </Link>
               <a
                 href="https://calendly.com/vpsystem1/30min"
                 target="_blank"
                 rel="noreferrer"
-                className="btn-accent text-lg px-6 py-3"
+                className="btn-accent text-base px-5 py-2.5"
               >
                 Se om det giver mening for dig?
               </a>
@@ -106,6 +112,20 @@ export default function Home() {
 
         {/* HOW IT WORKS */}
         <HowItWorks />
+
+        {/* CTA til overblik-siden */}
+        <section className="container-xl pt-6 md:pt-8 relative z-10 text-center">
+          <p className="text-[var(--ink-2)] mb-4">
+            Nysgerrig på hvordan det egentlig virker? Leg med tallene og forstå
+            det på 30 sekunder.
+          </p>
+          <Link
+            to="/overblik"
+            className="inline-flex items-center justify-center rounded-lg border-2 border-[var(--accent)] bg-[#47fabe1a] px-6 py-3 text-lg font-semibold text-[var(--accent)] transition-colors hover:bg-[#47fabe2e]"
+          >
+            Prøv det selv: value betting, surebetting &amp; arbitrage →
+          </Link>
+        </section>
 
         {/* INTERVIEW TESTIMONIALS */}
         <section className="container-xl pt-8 md:pt-12 relative z-10">

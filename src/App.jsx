@@ -1,5 +1,10 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { lazy, Suspense } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useLocation,
+} from "react-router-dom";
+import { lazy, Suspense, useEffect } from "react";
 import Nav from "./components/Nav";
 import { Analytics } from "@vercel/analytics/react";
 
@@ -8,6 +13,15 @@ const Home = lazy(() => import("./pages/Home"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Overblik = lazy(() => import("./pages/Overblik"));
+
+// Scroll til toppen ved sideskift
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -25,6 +39,7 @@ export default function App() {
       </a>
 
       <Router>
+        <ScrollToTop />
         <Nav />
         <Suspense fallback={<LoadingFallback />}>
           <main id="main-content" tabIndex={-1}>

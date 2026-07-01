@@ -16,6 +16,12 @@ export default function Nav() {
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-6">
+          <Link
+            to="/overblik"
+            className="link-accent hover:text-[var(--accent)] transition-colors"
+          >
+            Sådan virker det
+          </Link>
           <a
             href="#video"
             className="link-accent hover:text-[var(--accent)] transition-colors"
@@ -92,6 +98,13 @@ export default function Nav() {
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-[var(--line)] bg-[var(--panel)]">
           <div className="container-xl py-4 flex flex-col gap-3">
+            <Link
+              to="/overblik"
+              className="link-accent py-2"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Sådan virker det
+            </Link>
             <a
               href="#video"
               className="link-accent py-2"
