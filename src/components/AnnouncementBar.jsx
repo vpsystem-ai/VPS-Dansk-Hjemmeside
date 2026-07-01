@@ -44,7 +44,7 @@ export default function AnnouncementBar() {
           </span>
           Vores nye app er live — opret en gratis bruger nu
         </span>
-        <span aria-hidden className="font-extrabold">
+        <span aria-hidden className="hidden font-extrabold sm:inline">
           →
         </span>
       </a>
