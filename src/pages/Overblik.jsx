@@ -1,0 +1,1390 @@
+import React, { useMemo, useState } from "react";
+
+/**
+ * Overblik – interaktiv "prøv selv"-side der forklarer value betting,
+ * surebetting og arbitrage helt simpelt og visuelt.
+ *
+ * Tænkt som markedsførings-hook: en besøgende skal på 30 sekunder kunne
+ * lege med tallene og forstå princippet UDEN at have set kurset.
+ */
+
+/* ---------- helpers ---------- */
+const dk = (n, d = 2) =>
+  (isFinite(n) ? n : 0).toLocaleString("da-DK", {
+    minimumFractionDigits: d,
+    maximumFractionDigits: d,
+  });
+const kr = (n) => `${dk(Math.round(n), 0)} kr`;
+const pct = (n, d = 1) => `${dk(n, d)}%`;
+
+// deterministisk RNG så grafen er stabil mellem renders (kun ændrer sig med input)
+function mulberry32(a) {
+  return function () {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const GOOD = "#47fabe";
+const BAD = "#ff5c7a";
+
+const APP_SIGNUP_URL = "https://app.valueprofitsprotocol.dk/login";
+const CALENDLY_URL = "https://calendly.com/vpsystem1/30min";
+const SKOOL_URL = "https://www.skool.com/the-value-profits-system";
+
+/* ---------- ordbog (hover-forklaringer for nybegyndere) ---------- */
+function Term({ children, def }) {
+  return (
+    <span
+      tabIndex={0}
+      className="group relative inline cursor-help border-b border-dotted border-[var(--accent)] font-medium text-[var(--accent)] outline-none"
+    >
+      {children}
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 hidden w-60 max-w-[80vw] -translate-x-1/2 rounded-lg border border-[var(--line)] bg-[var(--panel)] p-3 text-left text-xs font-normal leading-relaxed text-[var(--ink-2)] shadow-xl group-hover:block group-focus:block group-focus-within:block">
+        {def}
+      </span>
+    </span>
+  );
+}
+
+// tidshorisont-markør: value = langsigtet (fokus), sure/arb = kortsigtet
+function Horizon({ kind }) {
+  const long = kind === "long";
+  const c = long ? GOOD : "#ffca57";
+  return (
+    <span
+      className="mb-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold"
+      style={{ color: c, background: `${c}1a`, border: `1px solid ${c}44` }}
+    >
+      {long ? "🎯 Langsigtet · vores fokus" : "⚡ Kortsigtet · godt til at komme i gang"}
+    </span>
+  );
+}
+
+/* ---------- små UI-byggeklodser ---------- */
+function Slider({ label, value, onChange, min, max, step, format, help }) {
+  return (
+    <label className="block">
+      <div className="mb-1 flex items-baseline justify-between gap-3">
+        <span className="text-sm text-[var(--ink-2)]">
+          {label}
+          {help && (
+            <>
+              {" "}
+              <Term def={help}>
+                <span className="text-xs">ⓘ</span>
+              </Term>
+            </>
+          )}
+        </span>
+        <span className="text-sm font-semibold text-[var(--accent)]">
+          {format ? format(value) : value}
+        </span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="w-full cursor-pointer"
+        style={{ accentColor: "var(--accent)" }}
+      />
+    </label>
+  );
+}
+
+function Verdict({ ok, okText, noText }) {
+  return (
+    <div
+      className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-bold"
+      style={{
+        color: ok ? GOOD : BAD,
+        background: `${ok ? GOOD : BAD}1a`,
+        border: `1px solid ${ok ? GOOD : BAD}55`,
+      }}
+    >
+      <span>{ok ? "✓" : "✕"}</span>
+      {ok ? okText : noText}
+    </div>
+  );
+}
+
+function StatRow({ label, value, strong, color }) {
+  return (
+    <div className="flex items-baseline justify-between border-b border-[var(--line)] py-2 last:border-0">
+      <span className="text-sm text-[var(--muted)]">{label}</span>
+      <span
+        className={strong ? "text-base font-bold" : "text-sm font-medium"}
+        style={{ color: color || "var(--ink)" }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+/* ---------- "Hvad analyserer vi?"-panel ---------- */
+const iconProps = {
+  width: 22,
+  height: 22,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.7,
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+};
+const ANALYSIS = [
+  {
+    title: "H2H historik",
+    sub: "De seneste indbyrdes møder mellem de to hold",
+    def: "H2H betyder “head-to-head” – altså de seneste gange præcis de to hold har mødt hinanden. Nogle hold ligger typisk godt eller skidt mod bestemte modstandere, uanset hvordan formen ellers er.",
+    icon: (
+      <svg {...iconProps}>
+        <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+      </svg>
+    ),
+  },
+  {
+    title: "Seneste 20 kampe per hold",
+    sub: "Hjemme- og udestatistik for begge hold",
+    def: "Vi kigger på formen i de sidste 20 kampe – og skelner mellem hjemme- og udekampe, fordi mange hold spiller markant bedre på hjemmebane end ude.",
+    icon: (
+      <svg {...iconProps}>
+        <path d="M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2" />
+      </svg>
+    ),
+  },
+  {
+    title: "Modelbaserede fair odds",
+    sub: "Poisson-model + empirisk blending",
+    def: "Vores statistiske model regner ud, hvor sandsynligt hvert resultat er, og blander det med, hvad der historisk faktisk er sket. Resultatet er de “fair odds” – de reelle odds, før bookmakeren lægger sin avance oveni.",
+    icon: (
+      <svg {...iconProps}>
+        <path d="M12 3v18M5 21h14M6 7h12M6 7l-3 6a3 3 0 0 0 6 0zM18 7l-3 6a3 3 0 0 0 6 0z" />
+      </svg>
+    ),
+  },
+  {
+    title: "Odds bevægelse",
+    sub: "Realtidshistorik fra alle bookmakere",
+    def: "Vi følger, hvordan oddsene ændrer sig i realtid hos alle bookmakere. Store bevægelser afslører ofte, hvor pengene – og de skarpe spillere – lægger sig, før kampen starter.",
+    icon: (
+      <svg {...iconProps}>
+        <path d="M3 17l6-6 4 4 8-8M15 7h6v6" />
+      </svg>
+    ),
+  },
+  {
+    title: "Konsensus prismodel",
+    sub: "Bookmakere sammenlignes",
+    def: "Vi sammenligner priserne på tværs af mange bookmakere for at finde markedets “sande” pris. Så kan vi se, hvem der stikker ud med for høje odds – altså hvor der er value.",
+    icon: (
+      <svg {...iconProps}>
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+  },
+  {
+    title: "Dommere",
+    sub: "Hvem dømmer kampen?",
+    def: "Vi kigger på, hvem dommeren er i den enkelte kamp. Nogle dommere giver markant flere kort og frispark end andre – det påvirker især kort-, frispark- og hjørnemarkederne.",
+    icon: (
+      <svg {...iconProps}>
+        <rect x="5" y="5" width="9" height="13" rx="1.5" />
+        <rect x="10" y="7" width="9" height="13" rx="1.5" />
+      </svg>
+    ),
+  },
+  {
+    title: "Vejrforhold",
+    sub: "Indflydelse på mål, hjørner og kort",
+    def: "Regn, vind og temperatur påvirker spillet. Kraftig vind eller regn giver typisk færre mål og flere fejl – det tager vi højde for på mål-, hjørne- og kortmarkederne.",
+    icon: (
+      <svg {...iconProps}>
+        <path d="M17.5 19a4.5 4.5 0 1 0 0-9 6 6 0 0 0-11.6-1.5A4 4 0 0 0 6.5 19z" />
+      </svg>
+    ),
+  },
+];
+
+function AnalysisPanel() {
+  return (
+    <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
+      <div className="border-b border-[var(--line)] p-6">
+        <h3 className="text-lg font-bold text-[var(--accent)]">
+          Hvad analyserer vi?
+        </h3>
+        <p className="mt-1 text-sm leading-relaxed text-[var(--ink-2)]">
+          Du skal ikke selv regne noget ud. For hver eneste kamp henter vores
+          system automatisk en masse data og beregner de rigtige (“fair”) odds –
+          og sammenligner dem med bookmakernes. Her er nogle af de ting, vi
+          kigger på:
+        </p>
+        <p className="mt-2 text-xs font-medium text-[var(--accent)]">
+          👆 Hold musen over hver linje (eller tap på mobil) for en forklaring
+        </p>
+      </div>
+      <ul>
+        {ANALYSIS.map((a) => (
+          <li
+            key={a.title}
+            tabIndex={0}
+            className="group relative cursor-help border-b border-[var(--line)] p-4 outline-none transition-colors last:border-0 hover:bg-[var(--panel-2)] focus-visible:bg-[var(--panel-2)]"
+          >
+            <div className="flex items-start gap-4">
+              <span className="mt-0.5 text-[var(--ink-2)]">{a.icon}</span>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 font-semibold text-[var(--ink)]">
+                  {a.title}
+                  <span className="text-xs font-normal text-[var(--muted)] opacity-60 transition-opacity group-hover:opacity-0">
+                    ⓘ
+                  </span>
+                </div>
+                <div className="text-sm text-[var(--muted)]">{a.sub}</div>
+                <p className="mt-2 hidden text-sm leading-relaxed text-[var(--ink-2)] group-hover:block group-focus-within:block">
+                  {a.def}
+                </p>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      {/* forklaring: manuelt vs. automatisk */}
+      <div className="border-t border-[var(--line)] p-6 text-sm leading-relaxed text-[var(--ink-2)]">
+        <p>
+          Det lyder komplekst – men du kan sagtens lære at gøre det{" "}
+          <b className="text-[var(--ink)]">manuelt</b>. Det viser vi dig skridt
+          for skridt i vores videomateriale.
+        </p>
+        <p className="mt-2">
+          Eller lad{" "}
+          <b className="text-[var(--accent)]">vores system gøre det hele
+          automatisk</b>
+          . Du får adgang til hele vores setup, så alt det her regnes ud for dig
+          – og du kun skal bruge tiden på det sidste, nemme skridt: at placere
+          dine bets hos din foretrukne bookmaker.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- 1) VALUE BETTING ---------- */
+function ValueTool() {
+  const [chance, setChance] = useState(52); // din vurdering af den reelle chance (%)
+  const [odds, setOdds] = useState(2.1); // bookmakerens odds
+  const stake = 100;
+
+  const p = chance / 100;
+  const impliedChance = 100 / odds; // bookmakerens "skjulte" chance
+  const fairOdds = 100 / chance; // hvad odds BURDE være
+  const evKr = stake * (odds * p - 1); // forventet gevinst pr. bet
+  const evPct = (odds * p - 1) * 100;
+  const hasValue = odds > fairOdds;
+
+  // illustration af 200 bets á 100 kr (starter i 0 kr).
+  // Kurven svinger realistisk, men "trækkes" hen på den matematisk forventede
+  // slutsaldo (= forventet gevinst pr. bet × antal bets), så grafen ALTID er
+  // konsistent med resultatet: value = grøn/plus, ingen value = rød/minus.
+  const chart = useMemo(() => {
+    const N = 900;
+    const rng = mulberry32(Math.round(chance * 1000 + odds * 100));
+    const expectedTotal = N * stake * (odds * p - 1);
+    // rå tilfældig gang (viser variansen/svingningerne)
+    const raw = [0];
+    let bal = 0;
+    for (let i = 1; i <= N; i++) {
+      bal += rng() < p ? stake * (odds - 1) : -stake;
+      raw.push(bal);
+    }
+    const rawFinal = raw[N];
+    // korrigér forløbet, så det ender præcis på den forventede slutsaldo
+    const pts = raw.map((v, i) => v - (rawFinal - expectedTotal) * (i / N));
+    let min = 0;
+    let max = 0;
+    for (const v of pts) {
+      min = Math.min(min, v);
+      max = Math.max(max, v);
+    }
+    const W = 520;
+    const H = 210;
+    const padLeft = 30;
+    const padRight = 16;
+    const padTop = 12;
+    const padBot = 26;
+    const range = max - min || 1;
+    const x = (i) => padLeft + (i / N) * (W - padLeft - padRight);
+    const y = (v) => padTop + (1 - (v - min) / range) * (H - padTop - padBot);
+    const d = pts.map((v, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(v)}`).join(" ");
+    const ticks = [100, 300, 500, 700, 900].map((t) => ({ t, x: x(t) }));
+    return {
+      d,
+      zeroY: y(0),
+      W,
+      H,
+      padLeft,
+      padBot,
+      final: expectedTotal,
+      startX: x(0),
+      startY: y(0),
+      endX: x(N),
+      endY: y(expectedTotal),
+      ticks,
+    };
+  }, [chance, odds, p]);
+
+  return (
+    <div className="space-y-8">
+    <div className="grid gap-6 lg:grid-cols-2">
+      {/* controls + forklaring */}
+      <div className="space-y-5">
+        <div>
+          <Horizon kind="long" />
+        </div>
+        <p className="text-[var(--ink-2)]">
+          <b className="text-[var(--ink)]">Value betting</b> er kernen i vores
+          system – det er her, den store, langsigtede profit ligger. Det{" "}
+          handler om at satse, når{" "}
+          <Term def="En bookmaker er et spilfirma (fx Bet365, Unibet eller Betano), der tilbyder odds og tager imod dine væddemål.">
+            bookmakeren
+          </Term>{" "}
+          giver dig for høje{" "}
+          <Term def="Odds fortæller, hvor meget du får udbetalt. Odds 2,00 betyder, at 100 kr bliver til 200 kr, hvis du vinder.">
+            odds
+          </Term>{" "}
+          i forhold til, hvor sandsynligt udfaldet i virkeligheden er. Så tjener
+          du på <b className="text-[var(--accent)]">den lange bane</b> – præcis som
+          et kasino.
+        </p>
+
+        <div className="space-y-4 rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-5">
+          <Slider
+            label="Den reelle chance for at det sker"
+            help="Hvor ofte tror du udfaldet faktisk sker? Sætter du den til 60%, betyder det: hvis kampen blev spillet 100 gange, ville det ske i 60 af dem. Vores system regner det her ud for dig automatisk."
+            value={chance}
+            onChange={setChance}
+            min={5}
+            max={95}
+            step={1}
+            format={(v) => pct(v, 0)}
+          />
+          <Slider
+            label="Odds bookmakeren tilbyder"
+            help="Odds er det, bookmakeren udbetaler. Odds 2,00 betyder, at 100 kr bliver til 200 kr, hvis du vinder. Jo højere odds, jo mere får du – men jo sjældnere sker det typisk."
+            value={odds}
+            onChange={setOdds}
+            min={1.1}
+            max={5}
+            step={0.01}
+            format={(v) => dk(v, 2)}
+          />
+          <p className="text-xs text-[var(--muted)]">
+            Indsats: 100 kr pr. bet
+          </p>
+        </div>
+
+        <p className="text-sm text-[var(--ink-2)]">
+          Bookmakerens odds på {dk(odds)} svarer til, at de tror udfaldet kun
+          sker <b>{pct(impliedChance)}</b> af gangene. Tror du selv det sker{" "}
+          <b>{pct(chance, 0)}</b> af gangene, så{" "}
+          {hasValue ? (
+            <span style={{ color: GOOD }}>
+              får du betalt for meget = value ✓
+            </span>
+          ) : (
+            <span style={{ color: BAD }}>
+              får du betalt for lidt = ingen value ✕
+            </span>
+          )}
+          .
+        </p>
+      </div>
+
+      {/* resultat */}
+      <div className="space-y-4 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-5">
+        <Verdict ok={hasValue} okText="VALUE BET" noText="INGEN VALUE" />
+
+        <div className="mt-2">
+          <StatRow label="Bookmakerens odds" value={dk(odds)} />
+          <StatRow
+            label={
+              <Term def="Odds kan regnes om til en chance i procent (100 ÷ odds). Det er den chance, bookmakeren 'tror på'. Er den lavere end din egen vurdering, er der value.">
+                …svarer til en chance på
+              </Term>
+            }
+            value={pct(impliedChance)}
+          />
+          <StatRow
+            label={
+              <Term def="Fair odds er de 'ærlige' odds, der passer præcis til den chance, du har vurderet – uden bookmakerens avance. Er bookmakerens odds HØJERE end fair odds, er der value.">
+                Fair odds (det den burde være)
+              </Term>
+            }
+            value={dk(fairOdds)}
+          />
+          <StatRow
+            label={
+              <Term def="Din gennemsnitlige gevinst pr. bet på den lange bane. Er tallet grønt (plus), tjener du over tid. Er det rødt (minus), taber du over tid. Enkelte bets kan altid vindes eller tabes – det er gennemsnittet, der tæller.">
+                Forventet gevinst pr. bet
+              </Term>
+            }
+            value={`${evKr >= 0 ? "+" : ""}${kr(evKr)} (${
+              evPct >= 0 ? "+" : ""
+            }${pct(evPct)})`}
+            strong
+            color={hasValue ? GOOD : BAD}
+          />
+        </div>
+
+        <div>
+          <div className="mb-1 flex items-baseline justify-between gap-2">
+            <p className="text-xs text-[var(--muted)]">
+              Din saldo over 900 bets á 100 kr:
+            </p>
+            <p className="text-sm">
+              <span className="text-[var(--muted)]">Efter 900 bets: </span>
+              <b style={{ color: chart.final >= 0 ? GOOD : BAD }}>
+                {chart.final >= 0 ? "+" : "−"}
+                {kr(Math.abs(chart.final))}
+              </b>
+            </p>
+          </div>
+          <svg viewBox={`0 0 ${chart.W} ${chart.H}`} className="w-full">
+            {/* 0-linje = du går i nul */}
+            <line
+              x1={chart.padLeft}
+              x2={chart.W - 4}
+              y1={chart.zeroY}
+              y2={chart.zeroY}
+              stroke="var(--muted)"
+              strokeWidth="1"
+              strokeDasharray="4 4"
+            />
+            <text
+              x={chart.padLeft - 6}
+              y={chart.zeroY + 3}
+              fontSize="10"
+              textAnchor="end"
+              fill="var(--muted)"
+            >
+              0 kr
+            </text>
+
+            {/* kurven */}
+            <path
+              d={chart.d}
+              fill="none"
+              stroke={chart.final >= 0 ? GOOD : BAD}
+              strokeWidth="2"
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+            />
+
+            {/* start- og slutpunkt */}
+            <circle cx={chart.startX} cy={chart.startY} r="3" fill="var(--muted)" />
+            <circle
+              cx={chart.endX}
+              cy={chart.endY}
+              r="4"
+              fill={chart.final >= 0 ? GOOD : BAD}
+            />
+
+            {/* antal bets langs bunden */}
+            {chart.ticks.map((tk, idx) => (
+              <text
+                key={tk.t}
+                x={tk.x}
+                y={chart.H - 6}
+                fontSize="10"
+                fill="var(--muted)"
+                textAnchor={
+                  idx === 0
+                    ? "start"
+                    : idx === chart.ticks.length - 1
+                    ? "end"
+                    : "middle"
+                }
+              >
+                {tk.t} bets
+              </text>
+            ))}
+          </svg>
+
+          <div className="mt-3 space-y-1.5 rounded-lg border border-[var(--line)] bg-[var(--panel-2)] p-3 text-xs leading-relaxed text-[var(--ink-2)]">
+            <p className="font-semibold text-[var(--ink)]">
+              Sådan læser du grafen:
+            </p>
+            <p>
+              • Den stiplede linje er <b>0 kr</b> – der hvor du hverken har tjent
+              eller tabt.
+            </p>
+            <p>
+              • Er kurven <b style={{ color: GOOD }}>over stregen</b>, er du i plus.
+              Er den <b style={{ color: BAD }}>under stregen</b>, er du i minus.
+            </p>
+            <p>
+              • Hvert bet svinger op og ned – men er der value, ender kurven i{" "}
+              <b style={{ color: GOOD }}>plus (grøn)</b>. Uden value ender den i{" "}
+              <b style={{ color: BAD }}>minus (rød)</b>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+      <AnalysisPanel />
+    </div>
+  );
+}
+
+/* ---------- 2+3) SUREBETTING / ARBITRAGE (samme princip) ---------- */
+function computeArb(oddsArr, budget) {
+  const inv = oddsArr.map((o) => 1 / o);
+  const margin = inv.reduce((a, b) => a + b, 0);
+  const stakes = inv.map((i) => (budget * i) / margin);
+  const ret = budget / margin; // hvert udfald returnerer det samme
+  const profit = ret - budget;
+  return {
+    margin,
+    stakes,
+    ret,
+    profit,
+    profitPct: (1 / margin - 1) * 100,
+    isSure: margin < 1,
+  };
+}
+
+function SureTool({
+  labels,
+  defaults,
+  intro,
+  note,
+  defaultBudget = 1000,
+  maxBudget = 5000,
+}) {
+  const [odds, setOdds] = useState(defaults);
+  const [budget, setBudget] = useState(defaultBudget);
+  const setOne = (i, v) => setOdds((prev) => prev.map((x, j) => (j === i ? v : x)));
+  const r = computeArb(odds, budget);
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <div className="space-y-5">
+        <p className="text-[var(--ink-2)]">{intro}</p>
+
+        <div className="space-y-4 rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-5">
+          {labels.map((lb, i) => (
+            <Slider
+              key={lb.key}
+              label={`Odds hos ${lb.book} – ${lb.name}`}
+              value={odds[i]}
+              onChange={(v) => setOne(i, v)}
+              min={1.1}
+              max={6}
+              step={0.01}
+              format={(v) => dk(v, 2)}
+            />
+          ))}
+          <Slider
+            label="Samlet beløb du vil satse"
+            value={budget}
+            onChange={setBudget}
+            min={100}
+            max={maxBudget}
+            step={100}
+            format={(v) => kr(v)}
+          />
+        </div>
+
+        <p className="text-sm text-[var(--ink-2)]">
+          Trick'et: fordel pengene på tværs af bookmakere, så du{" "}
+          <b>vinder det samme uanset hvad der sker</b>. Er markedsprocenten under
+          100%, er der garanteret profit.
+        </p>
+
+        {note}
+      </div>
+
+      <div className="space-y-4 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-5">
+        <Verdict
+          ok={r.isSure}
+          okText="SUREBET – garanteret profit"
+          noText="Ikke en surebet lige nu"
+        />
+
+        <div className="mt-2 overflow-hidden rounded-lg border border-[var(--line)]">
+          <table className="w-full text-sm">
+            <thead className="bg-[var(--panel-2)] text-[var(--muted)]">
+              <tr>
+                <th className="p-2 text-left font-medium">Udfald</th>
+                <th className="p-2 text-right font-medium">Odds</th>
+                <th className="p-2 text-right font-medium">Sæt</th>
+                <th className="p-2 text-right font-medium">Returnerer</th>
+              </tr>
+            </thead>
+            <tbody>
+              {labels.map((lb, i) => (
+                <tr key={lb.key} className="border-t border-[var(--line)]">
+                  <td className="p-2">
+                    <div className="font-medium text-[var(--ink)]">{lb.name}</div>
+                    <div className="text-xs text-[var(--muted)]">{lb.book}</div>
+                  </td>
+                  <td className="p-2 text-right">{dk(odds[i])}</td>
+                  <td className="p-2 text-right">{kr(r.stakes[i])}</td>
+                  <td
+                    className="p-2 text-right font-medium"
+                    style={{ color: "var(--accent)" }}
+                  >
+                    {kr(r.ret)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          <StatRow
+            label={
+              <Term def="Markedsprocenten er bookmakernes samlede 'pris'. Er den under 100%, kan du dække alle udfald og stadig få flere penge igen, end du satsede – uanset resultatet.">
+                Markedsprocent
+              </Term>
+            }
+            value={pct(r.margin * 100)}
+          />
+          <StatRow label="Du satser i alt" value={kr(budget)} />
+          <StatRow
+            label="Du får igen (uanset udfald)"
+            value={kr(r.ret)}
+            color={r.isSure ? GOOD : BAD}
+          />
+          <StatRow
+            label="Garanteret profit"
+            value={`${r.profit >= 0 ? "+" : ""}${kr(r.profit)} (${
+              r.profitPct >= 0 ? "+" : ""
+            }${pct(r.profitPct)})`}
+            strong
+            color={r.isSure ? GOOD : BAD}
+          />
+        </div>
+        {!r.isSure && (
+          <p className="text-xs text-[var(--muted)]">
+            Skru op for én af odds'ene, indtil markedsprocenten kommer under 100%
+            – så opstår den garanterede profit.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- 4) RENTE-RENTE / COMPOUNDING ---------- */
+function niceCeil(x) {
+  if (x <= 0) return 1;
+  const pow = Math.pow(10, Math.floor(Math.log10(x)));
+  const n = x / pow;
+  const s = n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10;
+  return s * pow;
+}
+
+function CompoundTool() {
+  const [start, setStart] = useState(10000);
+  const [numBets, setNumBets] = useState(900);
+  const [stakePct, setStakePct] = useState(3); // % af bankroll
+  const [evPct, setEvPct] = useState(6); // % af indsats
+  const adjustEvery = 250; // justér indsats ~1 gang om måneden
+
+  const sim = useMemo(() => {
+    const series = [start];
+    let bal = start;
+    let blockStake = bal * (stakePct / 100);
+    for (let i = 1; i <= numBets; i++) {
+      if ((i - 1) % adjustEvery === 0) blockStake = bal * (stakePct / 100);
+      bal += blockStake * (evPct / 100);
+      series.push(bal);
+    }
+    return { series, final: bal, profit: bal - start };
+  }, [start, numBets, stakePct, evPct]);
+
+  // graf-geometri
+  const W = 600;
+  const H = 300;
+  const padL = 8;
+  const padR = 62;
+  const padT = 14;
+  const padB = 26;
+  const gridStep = niceCeil((sim.final * 1.1) / 4);
+  const yMax = Math.max(gridStep, Math.ceil((sim.final * 1.05) / gridStep) * gridStep);
+  const gridlines = [];
+  for (let v = 0; v <= yMax + 1; v += gridStep) gridlines.push(v);
+
+  const x = (i) => padL + (i / numBets) * (W - padL - padR);
+  const y = (v) => H - padB - (v / yMax) * (H - padT - padB);
+
+  // sampled path for ydeevne
+  const stepEvery = Math.max(1, Math.floor(sim.series.length / 160));
+  const samples = [];
+  for (let i = 0; i < sim.series.length; i += stepEvery) samples.push(i);
+  if (samples[samples.length - 1] !== sim.series.length - 1)
+    samples.push(sim.series.length - 1);
+
+  const topLine = samples.map((i) => `${x(i)},${y(sim.series[i])}`).join(" ");
+  const greenArea =
+    `M${x(0)},${y(start)} ` +
+    samples.map((i) => `L${x(i)},${y(sim.series[i])}`).join(" ") +
+    ` L${x(numBets)},${y(start)} Z`;
+  const blackArea = `M${x(0)},${y(0)} L${x(numBets)},${y(0)} L${x(numBets)},${y(
+    start
+  )} L${x(0)},${y(start)} Z`;
+
+  const xTicks = [0, 0.2, 0.4, 0.6, 0.8, 1].map((f) => Math.round(numBets * f));
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_1fr]">
+      {/* venstre: input + strategi */}
+      <div className="space-y-5">
+        <div>
+          <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-[var(--muted)]">
+            Start bankroll (DKK)
+          </label>
+          <input
+            type="number"
+            min={100}
+            step={500}
+            value={start}
+            onChange={(e) => setStart(Math.max(0, parseFloat(e.target.value) || 0))}
+            className="w-full rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-4 py-3 text-lg font-semibold text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+          />
+        </div>
+
+        <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-5">
+          <Slider
+            label="Antal væddemål"
+            help="Hvor mange bets du placerer i alt. Med vores system er omkring 900 bets realistisk på cirka 3 måneder."
+            value={numBets}
+            onChange={(v) => setNumBets(Math.round(v))}
+            min={100}
+            max={2000}
+            step={50}
+            format={(v) => `${dk(v, 0)} stk.`}
+          />
+        </div>
+
+        <div className="space-y-4 rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-5">
+          <p className="text-xs font-bold uppercase tracking-wide text-[var(--muted)]">
+            Strategi &amp; forventninger
+          </p>
+          <Slider
+            label="Indsats pr. bet (% af bankroll)"
+            help="Din bankroll er den samlede pulje, du spiller for. Her vælger du, hvor stor en del du satser pr. bet. En lille del ad gangen gør, at du kan tåle uheldige perioder undervejs."
+            value={stakePct}
+            onChange={setStakePct}
+            min={1}
+            max={10}
+            step={0.5}
+            format={(v) => pct(v, v % 1 ? 1 : 0)}
+          />
+          <Slider
+            label="Expected value (+ev, % af indsats)"
+            help="Din gennemsnitlige fordel pr. bet. 6% betyder, at du i gennemsnit får 6 kr igen for hver 100 kr, du satser – på den lange bane. Det er dét, value betting handler om."
+            value={evPct}
+            onChange={setEvPct}
+            min={1}
+            max={12}
+            step={0.5}
+            format={(v) => pct(v, v % 1 ? 1 : 0)}
+          />
+          <div className="flex items-baseline justify-between pt-1">
+            <span className="text-sm text-[var(--ink-2)]">
+              Justering af indsats
+            </span>
+            <span className="text-sm font-semibold text-[var(--ink)]">
+              Hver måned (~250 bets)
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* højre: resultat + graf */}
+      <div className="space-y-4 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-6">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-[var(--muted)]">
+            Forventet slut-bankroll (skattefrit)
+          </p>
+          <p className="text-4xl font-black tracking-tight text-[var(--accent)] sm:text-5xl">
+            {dk(sim.final, 0)} DKK
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-x-8 gap-y-1 border-t border-[var(--line)] pt-3 text-sm">
+          <span className="flex items-center gap-2">
+            <span
+              className="inline-block h-3 w-3 rounded-sm"
+              style={{ background: GOOD }}
+            />
+            <span className="text-[var(--muted)]">Estimeret profit:</span>
+            <b className="text-[var(--ink)]">{dk(sim.profit, 0)} DKK</b>
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="inline-block h-3 w-3 rounded-sm bg-[#16302a]" />
+            <span className="text-[var(--muted)]">Start bankroll:</span>
+            <b className="text-[var(--ink)]">{dk(start, 0)} DKK</b>
+          </span>
+        </div>
+
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+          <defs>
+            <linearGradient id="profFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={GOOD} stopOpacity="0.55" />
+              <stop offset="100%" stopColor={GOOD} stopOpacity="0.06" />
+            </linearGradient>
+          </defs>
+
+          {/* gridlines + y-labels */}
+          {gridlines.map((v) => (
+            <g key={v}>
+              <line
+                x1={padL}
+                x2={W - padR}
+                y1={y(v)}
+                y2={y(v)}
+                stroke="var(--line)"
+                strokeWidth="1"
+              />
+              <text
+                x={W - padR + 6}
+                y={y(v) + 4}
+                fontSize="11"
+                fill="var(--muted)"
+              >
+                {dk(v / 1000, 0)}k
+              </text>
+            </g>
+          ))}
+
+          <path d={blackArea} fill="#16302a" />
+          <path d={greenArea} fill="url(#profFill)" />
+          <polyline
+            points={topLine}
+            fill="none"
+            stroke={GOOD}
+            strokeWidth="2.5"
+            vectorEffect="non-scaling-stroke"
+          />
+
+          {/* x-labels */}
+          {xTicks.map((t, idx) => (
+            <text
+              key={t + "-" + idx}
+              x={x(t)}
+              y={H - 6}
+              fontSize="11"
+              fill="var(--muted)"
+              textAnchor={idx === 0 ? "start" : idx === xTicks.length - 1 ? "end" : "middle"}
+            >
+              {t === 0 ? "Start" : `${dk(t, 0)} bets`}
+            </text>
+          ))}
+        </svg>
+
+        <p className="text-xs text-[var(--muted)]">
+          Illustrativt eksempel baseret på de valgte forventninger. Reelle
+          resultater svinger undervejs og er ikke garanteret – men rente-rente
+          betyder, at din indsats vokser i takt med din bankroll.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- potentiale: surebetting ---------- */
+function SurebetPotential() {
+  const [count, setCount] = useState(100);
+  const [stake, setStake] = useState(1000);
+  const [profitPct, setProfitPct] = useState(2.5);
+  const perBet = (stake * profitPct) / 100;
+  const total = count * perBet;
+
+  // lineær graf: profitten vokser jævnt for hver surebet
+  const W = 520;
+  const H = 190;
+  const padL = 34;
+  const padR = 16;
+  const padT = 12;
+  const padB = 26;
+  const gridStep = niceCeil((total * 1.1) / 4) || 1;
+  const yMax = Math.max(gridStep, Math.ceil((total * 1.05) / gridStep) * gridStep);
+  const gridlines = [];
+  for (let v = 0; v <= yMax + 1; v += gridStep) gridlines.push(v);
+  const px = (f) => padL + f * (W - padL - padR);
+  const py = (v) => H - padB - (v / yMax) * (H - padT - padB);
+  const area = `M${px(0)},${py(0)} L${px(1)},${py(total)} L${px(1)},${py(0)} Z`;
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_1fr]">
+      <div className="space-y-4">
+        <div className="space-y-4 rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-5">
+          <Slider
+            label="Antal surebets"
+            help="Hvor mange surebets du laver i alt. Med vores system finder du dem automatisk – du skal bare placere dem."
+            value={count}
+            onChange={(v) => setCount(Math.round(v))}
+            min={10}
+            max={500}
+            step={10}
+            format={(v) => `${dk(v, 0)} stk.`}
+          />
+          <Slider
+            label="Beløb pr. surebet"
+            help="Hvor mange penge du fordeler ud på hver surebet. Jo større beløb, jo større profit i kroner – men risikoen er stadig nul."
+            value={stake}
+            onChange={(v) => setStake(Math.round(v))}
+            min={200}
+            max={5000}
+            step={100}
+            format={(v) => kr(v)}
+          />
+          <Slider
+            label="Sikker profit pr. surebet"
+            help="Den garanterede fortjeneste på hver surebet. Typisk 2–4% af beløbet – helt uden risiko for at tabe."
+            value={profitPct}
+            onChange={setProfitPct}
+            min={1}
+            max={5}
+            step={0.5}
+            format={(v) => pct(v, 1)}
+          />
+        </div>
+        <p className="text-sm text-[var(--ink-2)]">
+          Hver surebet giver ca.{" "}
+          <b className="text-[var(--accent)]">{kr(perBet)}</b> i sikker profit.
+          Gør du det {dk(count, 0)} gange, løber det op.
+        </p>
+      </div>
+
+      <div className="space-y-4 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-6">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-[var(--muted)]">
+            Samlet sikker profit
+          </p>
+          <p className="text-4xl font-black tracking-tight text-[var(--accent)] sm:text-5xl">
+            {dk(total, 0)} DKK
+          </p>
+        </div>
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+          {gridlines.map((v) => (
+            <g key={v}>
+              <line
+                x1={padL}
+                x2={W - padR}
+                y1={py(v)}
+                y2={py(v)}
+                stroke="var(--line)"
+                strokeWidth="1"
+              />
+              <text x={padL - 6} y={py(v) + 3} fontSize="10" textAnchor="end" fill="var(--muted)">
+                {dk(v / 1000, 0)}k
+              </text>
+            </g>
+          ))}
+          <path d={area} fill={`${GOOD}22`} />
+          <line
+            x1={px(0)}
+            y1={py(0)}
+            x2={px(1)}
+            y2={py(total)}
+            stroke={GOOD}
+            strokeWidth="2.5"
+            vectorEffect="non-scaling-stroke"
+          />
+          <text x={px(0)} y={H - 8} fontSize="10" fill="var(--muted)" textAnchor="start">
+            0
+          </text>
+          <text x={px(1)} y={H - 8} fontSize="10" fill="var(--muted)" textAnchor="end">
+            {dk(count, 0)} surebets
+          </text>
+        </svg>
+        <p className="text-xs text-[var(--muted)]">
+          Sikker profit = ingen risiko for at tabe. Hver surebet lægger det samme
+          oveni, så jo flere du laver, jo mere tjener du.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- potentiale: arbitrage / velkomstbonusser ---------- */
+const WELCOME_BONUSES = [
+  { name: "Bet365", amount: 1000 },
+  { name: "Unibet", amount: 1000 },
+  { name: "Betano", amount: 1000 },
+  { name: "Stake", amount: 100 },
+  { name: "LeoVegas", amount: 1000 },
+  { name: "Bwin", amount: 1000 },
+  { name: "NordicBet", amount: 500 },
+  { name: "888sport", amount: 500 },
+  { name: "Betsson", amount: 250 },
+  { name: "Expekt", amount: 1000 },
+  { name: "Mr Green", amount: 300 },
+  { name: "Tipwin", amount: 800 },
+  { name: "GetLucky", amount: 100 },
+  { name: "Bet25", amount: 250 },
+  { name: "Vbet", amount: 500 },
+  { name: "CampoBet", amount: 1000 },
+  { name: "Betinia", amount: 1000 },
+  { name: "ComeOn", amount: 1000 },
+  { name: "Cashpoint", amount: 500 },
+  { name: "Betmaster", amount: 1000 },
+  { name: "Danske Spil", amount: 25 },
+];
+
+function BonusPotential() {
+  const pool = WELCOME_BONUSES.reduce((a, b) => a + b.amount, 0);
+  const count = WELCOME_BONUSES.length;
+  const [conv, setConv] = useState(40); // hvor stor en del du sikrer som profit
+  const [accounts, setAccounts] = useState(1);
+  const total = (pool * conv) / 100 * accounts;
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_1fr]">
+      <div className="space-y-4">
+        <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-5">
+          <p className="text-sm text-[var(--ink-2)]">
+            Hos de danske bookmakere er der lige nu{" "}
+            <b className="text-[var(--ink)]">{count} velkomstbonusser</b> at hente
+            – tilsammen
+          </p>
+          <p className="text-2xl font-black text-[var(--ink)]">{kr(pool)}</p>
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            i gratis bonusser. Med arbitrage kan du gennemspille dem og sikre en
+            stor del af beløbet som profit.
+          </p>
+        </div>
+
+        <div className="space-y-4 rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-5">
+          <Slider
+            label="Hvor stor en del sikrer du?"
+            help="Med arbitrage dækker du alle udfald, så du beholder størstedelen af bonussen som profit. Typisk 40–70% – vi holder os til et forsigtigt estimat."
+            value={conv}
+            onChange={setConv}
+            min={30}
+            max={80}
+            step={5}
+            format={(v) => pct(v, 0)}
+          />
+          <Slider
+            label="Antal konti (fx dig, partner, ven)"
+            help="Har flere i din husstand egne konti, kan I hver især hente bonusserne. Det ganger potentialet op. Husk altid at følge den enkelte bookmakers regler."
+            value={accounts}
+            onChange={(v) => setAccounts(Math.round(v))}
+            min={1}
+            max={3}
+            step={1}
+            format={(v) => `${v} ${v === 1 ? "konto" : "konti"}`}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-4 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-6">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-[var(--muted)]">
+            Estimeret sikker profit fra bonusser
+          </p>
+          <p className="text-4xl font-black tracking-tight text-[var(--accent)] sm:text-5xl">
+            {dk(total, 0)} DKK
+          </p>
+        </div>
+
+        {/* visuel: bonuspulje vs. sikret profit */}
+        <div className="space-y-3">
+          <div>
+            <div className="mb-1 flex justify-between text-xs text-[var(--muted)]">
+              <span>Samlet bonuspulje{accounts > 1 ? ` × ${accounts}` : ""}</span>
+              <span>{kr(pool * accounts)}</span>
+            </div>
+            <div className="h-3 w-full overflow-hidden rounded-full bg-[var(--panel-2)]">
+              <div className="h-full rounded-full bg-[var(--line)]" style={{ width: "100%" }} />
+            </div>
+          </div>
+          <div>
+            <div className="mb-1 flex justify-between text-xs">
+              <span className="text-[var(--muted)]">Din sikre profit</span>
+              <span className="font-semibold" style={{ color: GOOD }}>
+                {kr(total)}
+              </span>
+            </div>
+            <div className="h-3 w-full overflow-hidden rounded-full bg-[var(--panel-2)]">
+              <div
+                className="h-full rounded-full"
+                style={{ width: `${conv}%`, background: GOOD }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <p className="text-xs text-[var(--muted)]">
+          Forsigtigt estimat – uden risiko for at tabe. Gennemspiller du bonusserne
+          hos flere bookmakere (og evt. flere konti i husstanden), vokser beløbet.
+          Følg altid den enkelte bookmakers regler.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- side ---------- */
+const TABS = [
+  { key: "value", label: "Value betting", badge: "Vores fokus" },
+  { key: "sure", label: "Surebetting" },
+  { key: "arb", label: "Arbitrage" },
+];
+
+export default function Overblik() {
+  const [tab, setTab] = useState("value");
+
+  return (
+    <div className="container-xl py-12 text-[var(--ink)]">
+      <header className="mb-8 max-w-2xl space-y-3">
+        <h1 className="text-3xl font-black tracking-tight glow-accent sm:text-4xl">
+          Forstå det på 30 sekunder
+        </h1>
+        <p className="text-[var(--ink-2)]">
+          Value betting, surebetting og arbitrage er de metoder, professionelle
+          bruger til at tjene på betting. Det kan lyde teknisk – men uanset om du
+          er helt ny eller har spillet i årevis, behøver du hverken være
+          matematik-geni eller forstå statistik. Leg med tallene herunder og se
+          selv, hvordan det virker – og lad vores system gøre det tunge arbejde,
+          når du vil i gang for alvor.
+        </p>
+        <p className="text-sm text-[var(--muted)]">
+          <b className="text-[var(--accent)]">Value betting</b> er kernen i vores
+          system og det, vi går efter på den lange bane. Surebetting og arbitrage
+          er mere kortsigtede – gode til at komme i gang og hente hurtige, sikre
+          gevinster.
+        </p>
+      </header>
+
+      {/* tabs */}
+      <div className="mb-8 flex flex-wrap gap-2">
+        {TABS.map((t) => {
+          const active = tab === t.key;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className="rounded-full px-4 py-2 text-sm font-semibold transition-colors"
+              style={{
+                color: active ? "var(--bg)" : "var(--ink-2)",
+                background: active ? "var(--accent)" : "var(--panel)",
+                border: `1px solid ${active ? "var(--accent)" : "var(--line)"}`,
+              }}
+            >
+              {t.label}
+              {t.badge && (
+                <span
+                  className="ml-2 rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+                  style={{
+                    background: active ? "rgba(0,0,0,0.25)" : `${GOOD}22`,
+                    color: active ? "var(--bg)" : GOOD,
+                  }}
+                >
+                  {t.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {tab === "value" && <ValueTool />}
+
+      {tab === "sure" && (
+        <>
+          <SureTool
+            intro={
+              <>
+                <span className="mb-3 block">
+                  <Horizon kind="short" />
+                </span>
+                <b className="text-[var(--ink)]">Surebetting</b> (også kaldet
+                arbitrage) er betting <b className="text-[var(--accent)]">uden
+                risiko</b>. Det er en god måde at komme i gang og hente hurtige,
+                sikre gevinster – men det er mere kortsigtet end value betting. To{" "}
+                <Term def="En bookmaker er et spilfirma (fx Bet365, Unibet eller Betano), der tilbyder odds og tager imod dine væddemål.">
+                  bookmakere
+                </Term>{" "}
+                er uenige om oddsene i fx en tenniskamp – så satser du på begge
+                spillere, og vinder uanset hvem der vinder.
+              </>
+            }
+            labels={[
+              { key: "a", name: "Spiller A vinder", book: "Bookmaker 1" },
+              { key: "b", name: "Spiller B vinder", book: "Bookmaker 2" },
+            ]}
+            defaults={[2.05, 2.05]}
+          />
+
+          <section className="mt-12 border-t border-[var(--line)] pt-8">
+            <header className="mb-6 max-w-2xl space-y-2">
+              <h2 className="text-2xl font-black tracking-tight sm:text-3xl">
+                Hvad kan du tjene med surebetting?
+              </h2>
+              <p className="text-[var(--ink-2)]">
+                Hver surebet giver en lille, sikker profit. Prøv at se, hvad det
+                bliver til, når du laver mange af dem:
+              </p>
+            </header>
+            <SurebetPotential />
+          </section>
+        </>
+      )}
+
+      {tab === "arb" && (
+        <>
+          <SureTool
+            intro={
+              <>
+                <span className="mb-3 block">
+                  <Horizon kind="short" />
+                </span>
+                <b className="text-[var(--ink)]">Arbitrage</b> er præcis samme
+                princip som surebetting – her bare vist på et fodboldmarked med{" "}
+                <b>tre</b> udfald (hjemme / uafgjort / ude). Fordel pengene rigtigt,
+                og du <b className="text-[var(--accent)]">tjener uanset resultatet</b>.
+                <br />
+                <br />
+                Oftest udnytter vi bookmakernes{" "}
+                <Term def="En velkomstbonus er penge eller gratis spil, som en bookmaker giver nye kunder for at få dem til at oprette en konto.">
+                  velkomstbonusser
+                </Term>
+                : får du fx 1.000 kr i bonus, kan du{" "}
+                <Term def="At gennemspille en bonus betyder at satse den et bestemt antal gange, før den kan hæves som rigtige penge. Med arbitrage dækker du alle udfald undervejs, så bonussen bliver til sikker profit.">
+                  gennemspille
+                </Term>{" "}
+                dem via arbitrage og sikre dig profitten – stort set uden risiko.
+              </>
+            }
+            labels={[
+              { key: "1", name: "1 – Hjemmesejr", book: "Bookmaker 1" },
+              { key: "x", name: "X – Uafgjort", book: "Bookmaker 2" },
+              { key: "2", name: "2 – Udesejr", book: "Bookmaker 3" },
+            ]}
+            defaults={[3.2, 3.6, 2.7]}
+            defaultBudget={5000}
+            maxBudget={25000}
+            note={
+              <div
+                className="rounded-xl border p-4 text-sm leading-relaxed"
+                style={{
+                  borderColor: `${GOOD}55`,
+                  background: `${GOOD}12`,
+                  color: "var(--ink-2)",
+                }}
+              >
+                💰 <b className="text-[var(--ink)]">Sådan ser det ud i praksis:</b>{" "}
+                Udnytter du velkomstbonusserne hos alle de danske bookmakere med
+                denne metode, kan du typisk sikre dig{" "}
+                <b className="text-[var(--accent)]">4.000–6.000 kr</b> i profit –
+                stort set uden risiko.
+              </div>
+            }
+          />
+          <p className="mt-4 text-xs text-[var(--muted)]">
+            Fodnote: “Surebetting” og “arbitrage” betyder reelt det samme –
+            garanteret profit ved at dække alle udfald. Vi viser det bare på hhv.
+            2- og 3-vejs markeder.
+          </p>
+
+          <section className="mt-12 border-t border-[var(--line)] pt-8">
+            <header className="mb-6 max-w-2xl space-y-2">
+              <h2 className="text-2xl font-black tracking-tight sm:text-3xl">
+                Hvad kan du tjene på velkomstbonusserne?
+              </h2>
+              <p className="text-[var(--ink-2)]">
+                Der er lige nu gratis velkomstbonusser at hente hos de danske
+                bookmakere. Med arbitrage kan du gennemspille dem og sikre en stor
+                del som profit – helt uden risiko. Prøv selv:
+              </p>
+            </header>
+            <BonusPotential />
+          </section>
+        </>
+      )}
+
+      {/* rente-rente / compounding – kun for value betting */}
+      {tab === "value" && (
+        <section className="mt-16 border-t border-[var(--line)] pt-10">
+          <header className="mb-6 max-w-2xl space-y-2">
+            <span
+              className="inline-block rounded-full px-3 py-1 text-xs font-bold"
+              style={{ color: GOOD, background: `${GOOD}1a` }}
+            >
+              Gælder value betting
+            </span>
+            <h2 className="text-2xl font-black tracking-tight sm:text-3xl">
+              Dit potentiale med value betting over tid
+            </h2>
+            <p className="text-[var(--ink-2)]">
+              Hvor surebetting og bonusser giver et hurtigt, sikkert engangsbeløb,
+              er det <b className="text-[var(--ink)]">value betting</b>, der for
+              alvor vokser på den lange bane. Den virkelige styrke er{" "}
+              <b className="text-[var(--accent)]">rente-rente-effekten</b>: når din
+              bankroll vokser, vokser din indsats med – og profitten accelererer.
+              Prøv selv:
+            </p>
+          </header>
+          <CompoundTool />
+        </section>
+      )}
+
+      {/* CTA – opret gratis bruger */}
+      <div className="mt-16 rounded-2xl border border-[var(--accent)]/40 bg-[var(--panel)] p-8 text-center sm:p-10">
+        <h2 className="mb-2 text-2xl font-bold sm:text-3xl">
+          Prøv systemet gratis
+        </h2>
+        <p className="mx-auto mb-6 max-w-xl text-[var(--ink-2)]">
+          Det her er kun overfladen. Opret en gratis bruger nu og få et indblik i,
+          hvordan vores setup og app fungerer i praksis – helt uden binding.
+          Eller se vores <b className="text-[var(--ink)]">gratis kursus</b> igennem
+          inde på appen eller på Skool.
+        </p>
+        <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <a
+            href={APP_SIGNUP_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="btn-accent inline-flex px-6 py-3 text-base"
+          >
+            Opret gratis bruger nu
+          </a>
+          <a
+            href={SKOOL_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="link-accent inline-flex px-6 py-3 text-sm"
+          >
+            Se det gratis kursus på Skool
+          </a>
+        </div>
+        <p className="mt-4 text-sm text-[var(--muted)]">
+          Vil du hellere tale med os?{" "}
+          <a
+            href={CALENDLY_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="link-accent underline"
+          >
+            Book et gratis afklaringsmøde
+          </a>
+        </p>
+      </div>
+    </div>
+  );
+}

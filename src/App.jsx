@@ -7,6 +7,7 @@ import { Analytics } from "@vercel/analytics/react";
 const Home = lazy(() => import("./pages/Home"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
+const Overblik = lazy(() => import("./pages/Overblik"));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -31,6 +32,7 @@ export default function App() {
               <Route path="/" element={<Home />} />
               <Route path="/betingelser" element={<Terms />} />
               <Route path="/privatliv" element={<Privacy />} />
+              <Route path="/overblik" element={<Overblik />} />
             </Routes>
           </main>
         </Suspense>
