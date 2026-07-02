@@ -51,7 +51,12 @@ export default function VidalyticsEmbed() {
   return (
     <div
       id={EMBED_ID}
-      style={{ width: "100%", position: "relative", paddingTop: "56.25%" }}
+      style={{
+        width: "100%",
+        position: "relative",
+        paddingTop: "56.25%",
+        overflow: "hidden",
+      }}
     />
   );
 }
