@@ -722,21 +722,26 @@ function niceCeil(x) {
 function CompoundTool() {
   const [start, setStart] = useState(10000);
   const [numBets, setNumBets] = useState(900);
-  const [stakePct, setStakePct] = useState(3); // % af bankroll
-  const [evPct, setEvPct] = useState(6); // % af indsats
+  const [stakePct, setStakePct] = useState(2.5); // % af bankroll
+  const [evPct, setEvPct] = useState(5); // % af indsats
+  const [compound, setCompound] = useState(true); // rente-rente til/fra
   const adjustEvery = 250; // justér indsats ~1 gang om måneden
 
   const sim = useMemo(() => {
     const series = [start];
     let bal = start;
-    let blockStake = bal * (stakePct / 100);
+    // Med rente-rente: indsatsen genberegnes ud fra den voksende bankroll.
+    // Uden: indsatsen er fast ud fra startbankrollen (lineær vækst).
+    let blockStake = start * (stakePct / 100);
     for (let i = 1; i <= numBets; i++) {
-      if ((i - 1) % adjustEvery === 0) blockStake = bal * (stakePct / 100);
+      if (compound && (i - 1) % adjustEvery === 0) {
+        blockStake = bal * (stakePct / 100);
+      }
       bal += blockStake * (evPct / 100);
       series.push(bal);
     }
     return { series, final: bal, profit: bal - start };
-  }, [start, numBets, stakePct, evPct]);
+  }, [start, numBets, stakePct, evPct, compound]);
 
   // graf-geometri
   const W = 600;
@@ -796,7 +801,7 @@ function CompoundTool() {
             value={numBets}
             onChange={(v) => setNumBets(Math.round(v))}
             min={100}
-            max={2000}
+            max={1500}
             step={50}
             format={(v) => `${dk(v, 0)} stk.`}
           />
@@ -812,27 +817,66 @@ function CompoundTool() {
             value={stakePct}
             onChange={setStakePct}
             min={1}
+            max={5}
+            step={0.5}
+            format={(v) => pct(v, v % 1 ? 1 : 0)}
+          />
+          {stakePct >= 4 && (
+            <p
+              className="rounded-lg border p-2.5 text-xs leading-relaxed"
+              style={{
+                borderColor: "#ffca5744",
+                background: "#ffca571a",
+                color: "var(--ink-2)",
+              }}
+            >
+              ⚠️ Med {pct(stakePct, stakePct % 1 ? 1 : 0)} pr. bet vokser risikoen
+              for større tab i træk. De fleste vælger 2-3% for en mere stabil
+              kurve.
+            </p>
+          )}
+          <Slider
+            label="Expected value (+ev, % af indsats)"
+            help="Din gennemsnitlige fordel pr. bet. 5% betyder, at du i gennemsnit får 5 kr igen for hver 100 kr, du satser – på den lange bane."
+            value={evPct}
+            onChange={setEvPct}
+            min={1}
             max={10}
             step={0.5}
             format={(v) => pct(v, v % 1 ? 1 : 0)}
           />
-          <Slider
-            label="Expected value (+ev, % af indsats)"
-            help="Din gennemsnitlige fordel pr. bet. 6% betyder, at du i gennemsnit får 6 kr igen for hver 100 kr, du satser – på den lange bane. Det er dét, value betting handler om."
-            value={evPct}
-            onChange={setEvPct}
-            min={1}
-            max={12}
-            step={0.5}
-            format={(v) => pct(v, v % 1 ? 1 : 0)}
-          />
-          <div className="flex items-baseline justify-between pt-1">
-            <span className="text-sm text-[var(--ink-2)]">
-              Justering af indsats
-            </span>
-            <span className="text-sm font-semibold text-[var(--ink)]">
-              Hver måned (~250-500 bets)
-            </span>
+          <div className="border-t border-[var(--line)] pt-4">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-medium text-[var(--ink-2)]">
+                Rente-rente-effekt{" "}
+                <Term def="Rente-rente betyder, at du geninvesterer din gevinst. Når din bankroll vokser, satser du gradvist større beløb (og spreder dem typisk over flere bookmakere) – så profitten vokser hurtigere over tid. Slår du det fra, satser du hele tiden ud fra din startbankroll (lineær vækst).">
+                  <span className="text-xs">ⓘ</span>
+                </Term>
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={compound}
+                onClick={() => setCompound((c) => !c)}
+                className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
+                style={{ background: compound ? "var(--accent)" : "var(--line)" }}
+              >
+                <span
+                  className="inline-block h-4 w-4 rounded-full transition-transform"
+                  style={{
+                    transform: compound
+                      ? "translateX(1.5rem)"
+                      : "translateX(0.25rem)",
+                    background: compound ? "#0b0c0e" : "var(--muted)",
+                  }}
+                />
+              </button>
+            </div>
+            <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
+              {compound
+                ? "Til: din indsats vokser i takt med din bankroll (justeres ~hver måned). Så tjener du mere, jo større din pulje bliver."
+                : "Fra: du satser hele tiden det samme ud fra din startbankroll – væksten bliver lineær."}
+            </p>
           </div>
         </div>
       </div>
@@ -921,8 +965,7 @@ function CompoundTool() {
 
         <p className="text-xs text-[var(--muted)]">
           Illustrativt eksempel baseret på de valgte forventninger. Reelle
-          resultater svinger undervejs og er ikke garanteret – men rente-rente
-          betyder, at din indsats vokser i takt med din bankroll.
+          resultater svinger undervejs og er ikke garanteret.
         </p>
       </div>
     </div>
@@ -1057,16 +1100,16 @@ const BONUS_STEPS = [
   },
   {
     t: "Du gennemspiller det på 2-3 bets",
-    s: "med arbitrage – uden risiko, uanset hvordan kampene ender.",
+    s: "med arbitrage. Selve spillene koster typisk et par procent, men bonussen dækker det rigeligt.",
   },
   {
     t: "Du trækker pengene ud igen",
-    s: "og sidder tilbage med ca. 4.-5.000 kr i ren profit. Pr. person.",
+    s: "og sidder tilbage med ca. 4.-6.000 kr i profit. Pr. person.",
   },
 ];
 
 function BonusPotential() {
-  const [perPerson, setPerPerson] = useState(5500);
+  const [perPerson, setPerPerson] = useState(5000);
   const [persons, setPersons] = useState(1);
   const total = perPerson * persons;
 
@@ -1097,11 +1140,11 @@ function BonusPotential() {
         <div className="space-y-4 rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-5">
           <Slider
             label="Profit pr. person"
-            help="Hvor meget du sidder tilbage med efter at have gennemspillet bonusserne og trukket dit indskud ud igen. I snit omkring 5.500 kr, og op til ca. 7.000 kr når du udnytter alle bookmakerne optimalt."
+            help="Hvor meget du sidder tilbage med, efter du har gennemspillet bonusserne (selve spillene koster et par procent) og trukket dit indskud ud igen. Typisk 4.000-6.000 kr, når du udnytter alle bookmakerne."
             value={perPerson}
             onChange={(v) => setPerPerson(Math.round(v))}
-            min={3000}
-            max={7000}
+            min={4000}
+            max={6000}
             step={250}
             format={(v) => kr(v)}
           />
@@ -1165,6 +1208,77 @@ function BonusPotential() {
   );
 }
 
+/* ---------- fast eksempel: arbitrage-fordeling (ingen skydere) ---------- */
+function ArbExample() {
+  const odds = [2.95, 3.45, 2.55];
+  const budget = 10700;
+  const rows = [
+    { name: "1 – Hjemmesejr", book: "Bookmaker 1" },
+    { name: "X – Uafgjort", book: "Bookmaker 2" },
+    { name: "2 – Udesejr", book: "Bookmaker 3" },
+  ];
+  const r = computeArb(odds, budget);
+
+  return (
+    <div className="rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5 sm:p-6">
+      <p className="mb-1 text-xs font-bold uppercase tracking-wide text-[var(--muted)]">
+        Eksempel · sådan fordeles pengene
+      </p>
+      <p className="mb-4 text-sm leading-relaxed text-[var(--ink-2)]">
+        Du deler din indsats ud på de tre udfald hos forskellige bookmakere – så
+        du får (næsten) det samme igen, uanset hvem der vinder.
+      </p>
+
+      <div className="overflow-hidden rounded-lg border border-[var(--line)]">
+        <table className="w-full text-sm">
+          <thead className="bg-[var(--panel-2)] text-[var(--muted)]">
+            <tr>
+              <th className="p-2 text-left font-medium">Udfald</th>
+              <th className="p-2 text-right font-medium">Odds</th>
+              <th className="p-2 text-right font-medium">Sæt</th>
+              <th className="p-2 text-right font-medium">Returnerer</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={i} className="border-t border-[var(--line)]">
+                <td className="p-2">
+                  <div className="font-medium text-[var(--ink)]">{row.name}</div>
+                  <div className="text-xs text-[var(--muted)]">{row.book}</div>
+                </td>
+                <td className="p-2 text-right">{dk(odds[i])}</td>
+                <td className="p-2 text-right">{kr(r.stakes[i])}</td>
+                <td
+                  className="p-2 text-right font-medium"
+                  style={{ color: "var(--accent)" }}
+                >
+                  {kr(r.ret)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-3">
+        <div className="flex items-center justify-between border-b border-[var(--line)] py-2 text-sm">
+          <span className="text-[var(--muted)]">Du satser i alt</span>
+          <span className="font-medium">{kr(budget)}</span>
+        </div>
+        <div className="flex items-center justify-between py-2 text-sm">
+          <span className="text-[var(--muted)]">Du får igen (uanset udfald)</span>
+          <span className="font-medium">{kr(r.ret)}</span>
+        </div>
+      </div>
+
+      <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
+        På selve spillet koster det et par procent – men bonussen dækker det
+        rigeligt. Din reelle profit kommer fra bonusserne (se nedenfor).
+      </p>
+    </div>
+  );
+}
+
 /* ---------- side ---------- */
 const TABS = [
   { key: "value", label: "Value betting", badge: "Vores fokus" },
@@ -1196,6 +1310,49 @@ export default function Overblik() {
           gevinster.
         </p>
       </header>
+
+      {/* Mini-guide for nye brugere */}
+      <div className="mb-8 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-5">
+        <p className="mb-4 text-sm font-bold text-[var(--accent)]">
+          👋 Ny her? Sådan bruger du siden:
+        </p>
+        <ol className="grid gap-4 sm:grid-cols-3">
+          {[
+            {
+              t: "Vælg en metode",
+              d: "Start med Value betting nedenfor – det er vores primære fokus.",
+            },
+            {
+              t: "Læs forklaringen først",
+              d: "Læs teksten for at forstå metoden – prøv så skyderne bagefter.",
+            },
+            {
+              t: "Er et ord nyt?",
+              d: "Hold musen over ⓘ for en helt simpel forklaring.",
+            },
+          ].map((s, i) => (
+            <li key={i} className="flex gap-3">
+              <span
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold"
+                style={{ background: `${GOOD}22`, color: GOOD }}
+              >
+                {i + 1}
+              </span>
+              <div>
+                <div className="font-semibold text-[var(--ink)]">{s.t}</div>
+                <div className="text-sm text-[var(--muted)] leading-relaxed">
+                  {s.d}
+                </div>
+              </div>
+            </li>
+          ))}
+        </ol>
+        <p className="mt-4 border-t border-[var(--line)] pt-4 text-sm text-[var(--ink-2)]">
+          💡 Gennemgå gerne fanerne i rækkefølge –{" "}
+          <b className="text-[var(--ink)]">Value betting → Surebetting → Arbitrage</b>{" "}
+          – så bygger forståelsen sig naturligt op.
+        </p>
+      </div>
 
       {/* tabs */}
       <div className="mb-8 flex flex-wrap gap-2">
@@ -1290,72 +1447,29 @@ export default function Overblik() {
 
       {tab === "arb" && (
         <>
-          <SureTool
-            intro={
-              <>
-                <span className="mb-3 block">
-                  <Horizon kind="short" />
-                </span>
-                <b className="text-[var(--ink)]">Arbitrage</b> er præcis samme
-                princip som surebetting – her bare vist på et fodboldmarked med{" "}
-                <b>tre</b> udfald (hjemme / uafgjort / ude). Fordel pengene rigtigt,
-                og du <b className="text-[var(--accent)]">tjener uanset resultatet</b>.
-                <br />
-                <br />
-                Oftest udnytter vi bookmakernes{" "}
-                <Term def="En velkomstbonus er penge eller gratis spil, som en bookmaker giver nye kunder for at få dem til at oprette en konto.">
-                  velkomstbonusser
-                </Term>
-                : får du fx 1.000 kr i bonus, kan du{" "}
-                <Term def="At gennemspille en bonus betyder at satse den et bestemt antal gange, før den kan hæves som rigtige penge. Med arbitrage dækker du alle udfald undervejs, så bonussen bliver til sikker profit.">
-                  gennemspille
-                </Term>{" "}
-                dem via arbitrage og sikre dig profitten – uden risiko.
-              </>
-            }
-            labels={[
-              { key: "1", name: "1 – Hjemmesejr", book: "Bookmaker 1" },
-              { key: "x", name: "X – Uafgjort", book: "Bookmaker 2" },
-              { key: "2", name: "2 – Udesejr", book: "Bookmaker 3" },
-            ]}
-            defaults={[3.2, 3.6, 2.7]}
-            fixedBudget={10700}
-            note={
-              <div
-                className="rounded-xl border p-4 text-sm leading-relaxed"
-                style={{
-                  borderColor: `${GOOD}55`,
-                  background: `${GOOD}12`,
-                  color: "var(--ink-2)",
-                }}
-              >
-                💰 <b className="text-[var(--ink)]">Sådan ser det ud i praksis:</b>{" "}
-                Udnytter du velkomstbonusserne hos alle de 16 danske bookmakere
-                med denne metode, kan du typisk sikre dig{" "}
-                <b className="text-[var(--accent)]">5.-7.000 kr</b> i garanteret
-                profit pr. person – uden risiko.
-              </div>
-            }
-          />
-          <p className="mt-4 text-xs text-[var(--muted)]">
-            Fodnote: “Surebetting” og “arbitrage” bygger på samme princip –
-            garanteret profit ved at dække alle udfald. Forskellen er, at vi ved
-            arbitrage udnytter bookmakernes velkomstbonusser til at skabe
-            profitten.
-          </p>
-
-          <section className="mt-12 border-t border-[var(--line)] pt-8">
-            <header className="mb-6 max-w-2xl space-y-2">
+          <section>
+            <header className="mb-6 max-w-2xl space-y-3">
+              <Horizon kind="short" />
               <h2 className="text-2xl font-black tracking-tight sm:text-3xl">
                 Hvad kan du tjene på velkomstbonusserne?
               </h2>
-              <p className="text-[var(--ink-2)]">
-                Der er lige nu gratis velkomstbonusser at hente hos de danske
-                bookmakere. Med arbitrage kan du gennemspille dem og sikre en stor
-                del som profit – helt uden risiko. Prøv selv:
+              <p className="text-[var(--ink-2)] leading-relaxed">
+                <b className="text-[var(--ink)]">Arbitrage</b> bygger på samme
+                princip som surebetting – forskellen er, at vi her udnytter
+                bookmakernes{" "}
+                <Term def="En velkomstbonus er penge eller gratis spil, som en bookmaker giver nye kunder for at få dem til at oprette en konto.">
+                  velkomstbonusser
+                </Term>
+                . På selve spillene går man typisk et par procent i minus, men da
+                du spiller med{" "}
+                <b className="text-[var(--ink)]">gratis bonuspenge</b>, ender du
+                alligevel med solid profit. Prøv selv:
               </p>
             </header>
-            <BonusPotential />
+            <div className="space-y-8">
+              <ArbExample />
+              <BonusPotential />
+            </div>
           </section>
 
           <div className="mt-8 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-6">

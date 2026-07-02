@@ -86,7 +86,7 @@ export default function Home() {
             <div className="mt-8 md:mt-10 grid grid-cols-3 gap-3 sm:gap-4 max-w-2xl mx-auto">
               {[
                 { value: "1600+", label: "Aktive medlemmer" },
-                { value: "+EV", label: "Fokus" },
+                { value: "100+", label: "Daglige bets" },
                 { value: "7+", label: "År erfaring" },
               ].map((s) => (
                 <div
