@@ -3,16 +3,33 @@ import React, { useEffect } from "react";
 const EMBED_ID = "vidalytics_embed_lLLji1kON0xvXRrF";
 const LOADER_BASE =
   "https://fast.vidalytics.com/embeds/00G3LN3A/lLLji1kON0xvXRrF/";
-const SCRIPT_ID = "vidalytics-loader-lLLji1kON0xvXRrF";
 
-// Indlejret Vidalytics-video. Det officielle embed leveres som et rå
-// <script>, som ikke kan ligge direkte i JSX — derfor kører vi loader-koden
-// i en useEffect efter at embed-div'en er i DOM'en.
+// Indlejret Vidalytics-video. Det officielle embed leveres som et rå <script>.
+// Ved SPA-navigation (skift af side) mountes komponenten på ny med en tom
+// video-div, så vi skal (gen)køre embedden hver gang – ellers står videoen tom
+// efter man har skiftet side/menu. Selve loaderen hentes dog kun første gang.
 export default function VidalyticsEmbed() {
   useEffect(() => {
-    if (document.getElementById(SCRIPT_ID)) return;
+    let cancelled = false;
+
+    // Kør embedden for den aktuelle div (bruges både ved første load og remount)
+    const runEmbed = () => {
+      try {
+        if (window.Vidalytics && window.Vidalytics.Embed) {
+          new window.Vidalytics.Embed().run(EMBED_ID);
+          return true;
+        }
+      } catch {
+        /* ignore */
+      }
+      return false;
+    };
+
+    // Er loaderen allerede hentet (fx efter navigation), så kør bare igen
+    if (runEmbed()) return;
+
+    // Ellers: hent Vidalytics-loaderen (kun nødvendigt første gang)
     const s = document.createElement("script");
-    s.id = SCRIPT_ID;
     s.type = "text/javascript";
     s.text = `
 (function (v, i, d, a, l, y, t, c, s) {
@@ -26,6 +43,22 @@ export default function VidalyticsEmbed() {
 })(window, document, 'Vidalytics', '${EMBED_ID}', '${LOADER_BASE}');
 `;
     document.body.appendChild(s);
+
+    // Fallback: hvis loaderen først bliver klar lidt efter, så prøv at køre
+    // embedden et par gange (dækker hurtige frem-og-tilbage-navigationer).
+    let tries = 0;
+    const iv = setInterval(() => {
+      if (cancelled || tries++ > 20) {
+        clearInterval(iv);
+        return;
+      }
+      if (runEmbed()) clearInterval(iv);
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearInterval(iv);
+    };
   }, []);
 
   return (
