@@ -21,9 +21,8 @@ export default function HeroWithAvatars() {
             <img
               key={i}
               src={member.image}
-              alt={member.name}
+              alt="VPS-medlem"
               className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-[var(--bg)] shadow-lg hover:scale-110 transition-transform cursor-pointer object-cover"
-              title={member.name}
             />
           ))}
         </div>

@@ -3,7 +3,7 @@ import React, { useState } from "react";
 const faqData = [
   {
     q: "Hvordan fungerer jeres garanti?",
-    a: "Følg hele systemet — tjener du ikke penge, får du pengene retur. Så har vi arbejdet gratis.",
+    a: "Vi er så sikre på vores system, at vi stiller en klar resultatgaranti. Følger du det fuldt ud som anvist og ser du stadig ikke resultater, står vi på mål for det. Risikoen er vores – ikke din.",
   },
   {
     q: "Skal jeg have erfaring?",
