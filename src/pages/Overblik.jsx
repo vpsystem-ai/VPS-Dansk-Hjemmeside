@@ -725,7 +725,7 @@ function CompoundTool() {
   const [stakePct, setStakePct] = useState(2.5); // % af bankroll
   const [evPct, setEvPct] = useState(5); // % af indsats
   const [compound, setCompound] = useState(true); // rente-rente til/fra
-  const adjustEvery = 250; // justér indsats ~1 gang om måneden
+  const adjustEvery = 300; // justér indsats ~1 gang om måneden (~300 bets)
 
   const sim = useMemo(() => {
     const series = [start];
@@ -849,7 +849,7 @@ function CompoundTool() {
             <div className="flex items-center justify-between gap-3">
               <span className="text-sm font-medium text-[var(--ink-2)]">
                 Rente-rente-effekt{" "}
-                <Term def="Rente-rente betyder, at du geninvesterer din gevinst. Når din bankroll vokser, satser du gradvist større beløb (og spreder dem typisk over flere bookmakere) – så profitten vokser hurtigere over tid. Slår du det fra, satser du hele tiden ud fra din startbankroll (lineær vækst).">
+                <Term def="Rente-rente betyder, at du geninvesterer din gevinst. Vi genberegner din indsats ca. hver 300 bets (~1 gang om måneden) ud fra din aktuelle bankroll – så når puljen vokser, satser du gradvist større beløb (og spreder dem typisk over flere bookmakere), og profitten vokser hurtigere. Slår du det fra, satser du hele tiden ud fra din startbankroll (lineær vækst).">
                   <span className="text-xs">ⓘ</span>
                 </Term>
               </span>
@@ -874,7 +874,7 @@ function CompoundTool() {
             </div>
             <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
               {compound
-                ? "Til: din indsats vokser i takt med din bankroll (justeres ~hver måned). Så tjener du mere, jo større din pulje bliver."
+                ? "Til: din indsats genberegnes ca. hver 300 bets (~1 gang om måneden) ud fra din aktuelle bankroll. Så tjener du mere, jo større din pulje bliver."
                 : "Fra: du satser hele tiden det samme ud fra din startbankroll – væksten bliver lineær."}
             </p>
           </div>
@@ -1232,7 +1232,7 @@ function BonusPotential() {
 /* ---------- fast eksempel: arbitrage-fordeling (ingen skydere) ---------- */
 function ArbExample() {
   const odds = [2.95, 3.45, 2.55];
-  const budget = 10700;
+  const budget = 21400; // samlet kapital: indskud 10.700 + bonus 10.700
   const rows = [
     { name: "1 – Hjemmesejr", book: "Bookmaker 1" },
     { name: "X – Uafgjort", book: "Bookmaker 2" },
@@ -1246,8 +1246,9 @@ function ArbExample() {
         Eksempel · sådan fordeles pengene
       </p>
       <p className="mb-4 text-sm leading-relaxed text-[var(--ink-2)]">
-        Du deler din indsats ud på de tre udfald hos forskellige bookmakere – så
-        du får (næsten) det samme igen, uanset hvem der vinder.
+        Du deler din samlede kapital (indskud + bonus ≈ 21.000 kr) ud på de tre
+        udfald hos forskellige bookmakere – så du får (næsten) det samme igen,
+        uanset hvem der vinder.
       </p>
 
       <div className="overflow-hidden rounded-lg border border-[var(--line)]">
@@ -1281,9 +1282,16 @@ function ArbExample() {
         </table>
       </div>
 
+      <p className="mt-3 text-sm leading-relaxed text-[var(--ink-2)]">
+        Når kampen er afgjort, <b className="text-[var(--ink)]">taber du</b> hos de
+        bookmakere, hvor du satsede på det forkerte udfald – men{" "}
+        <b className="text-[var(--ink)]">vinder</b> hos den, hvor du ramte det
+        rigtige. Gevinsten (og bonussen dér) kører du så videre med.
+      </p>
+
       <div className="mt-3">
         <div className="flex items-center justify-between border-b border-[var(--line)] py-2 text-sm">
-          <span className="text-[var(--muted)]">Du satser i alt</span>
+          <span className="text-[var(--muted)]">Du fordeler i alt (indskud + bonus)</span>
           <span className="font-medium">{kr(budget)}</span>
         </div>
         <div className="flex items-center justify-between py-2 text-sm">
@@ -1292,10 +1300,14 @@ function ArbExample() {
         </div>
       </div>
 
-      <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
-        På selve spillet koster det et par procent – men bonussen dækker det
-        rigeligt. Din reelle profit kommer fra bonusserne (se nedenfor).
-      </p>
+      <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-4 text-sm leading-relaxed text-[var(--ink-2)]">
+        <b className="text-[var(--ink)]">Sådan ender du på profitten:</b> Dit
+        indskud på <b className="text-[var(--ink)]">10.700 kr</b> får du igen. Ud
+        af de <b className="text-[var(--ink)]">10.700 kr i gratis bonus</b> koster
+        gennemspillet og free-bet-reglerne dig cirka halvdelen – så du sidder
+        tilbage med ca.{" "}
+        <b className="text-[var(--accent)]">4.500-5.000 kr</b> i ren profit.
+      </div>
     </div>
   );
 }
