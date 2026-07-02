@@ -1108,6 +1108,48 @@ const BONUS_STEPS = [
   },
 ];
 
+function BonusSteps() {
+  return (
+    <div>
+      <p className="mb-4 text-xs font-bold uppercase tracking-wide text-[var(--muted)]">
+        Sådan fungerer det
+      </p>
+      <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {BONUS_STEPS.map((step, i) => (
+          <li
+            key={i}
+            className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-4"
+          >
+            <span
+              className="flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold"
+              style={{ background: `${GOOD}22`, color: GOOD }}
+            >
+              {i + 1}
+            </span>
+            <div className="mt-3 text-sm font-bold leading-snug text-[var(--ink)]">
+              {step.t}
+            </div>
+            <div className="mt-1 text-sm leading-relaxed text-[var(--muted)]">
+              {step.s}
+            </div>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 text-sm leading-relaxed text-[var(--ink-2)]">
+        <b className="text-[var(--ink)]">
+          Hvorfor “kun” 4.-6.000 kr, når bonusserne er på 10.700 kr?
+        </b>{" "}
+        Fordi du ikke beholder hele bonussens værdi: mange bonusser er “free
+        bets”, hvor du kun beholder gevinsten – ikke selve indsatsen. Og
+        deposit-bonusser skal gennemspilles 2-3 gange, hvor hver runde koster et
+        par procent. Tilsammen forvandler du realistisk{" "}
+        <b className="text-[var(--ink)]">cirka halvdelen</b> af bonusserne til
+        ren, udbetalbar profit.
+      </div>
+    </div>
+  );
+}
+
 function BonusPotential() {
   const [perPerson, setPerPerson] = useState(5000);
   const [persons, setPersons] = useState(1);
@@ -1116,27 +1158,6 @@ function BonusPotential() {
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_1fr]">
       <div className="space-y-4">
-        <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-5">
-          <p className="mb-3 text-xs font-bold uppercase tracking-wide text-[var(--muted)]">
-            Sådan fungerer det
-          </p>
-          <ol className="space-y-3">
-            {BONUS_STEPS.map((step, i) => (
-              <li key={i} className="flex gap-3">
-                <span
-                  className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-                  style={{ background: `${GOOD}22`, color: GOOD }}
-                >
-                  {i + 1}
-                </span>
-                <span className="text-sm text-[var(--ink-2)]">
-                  <b className="text-[var(--ink)]">{step.t}</b> {step.s}
-                </span>
-              </li>
-            ))}
-          </ol>
-        </div>
-
         <div className="space-y-4 rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-5">
           <Slider
             label="Profit pr. person"
@@ -1467,6 +1488,7 @@ export default function Overblik() {
               </p>
             </header>
             <div className="space-y-8">
+              <BonusSteps />
               <ArbExample />
               <BonusPotential />
             </div>
@@ -1474,7 +1496,7 @@ export default function Overblik() {
 
           <div className="mt-8 rounded-2xl border border-[var(--line)] bg-[var(--panel)] p-6">
             <h3 className="mb-2 flex items-center gap-2 text-lg font-bold">
-              ⚙️ Ser det nemt ud? Det er meningen
+              ⚙️ Ser det nemt ud?
             </h3>
             <p className="text-sm leading-relaxed text-[var(--ink-2)]">
               Selve princippet er enkelt – men bag ved ligger der et system, der
