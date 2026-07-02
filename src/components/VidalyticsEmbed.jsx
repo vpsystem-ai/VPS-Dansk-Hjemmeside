@@ -4,31 +4,34 @@ const EMBED_ID = "vidalytics_embed_lLLji1kON0xvXRrF";
 const LOADER_BASE =
   "https://fast.vidalytics.com/embeds/00G3LN3A/lLLji1kON0xvXRrF/";
 
-// Indlejret Vidalytics-video. Det officielle embed leveres som et rå <script>.
-// Ved SPA-navigation (skift af side) mountes komponenten på ny med en tom
-// video-div, så vi skal (gen)køre embedden hver gang – ellers står videoen tom
-// efter man har skiftet side/menu. Selve loaderen hentes dog kun første gang.
+// Modul-niveau: sikrer at vendor-loaderen kun injiceres én gang på tværs af
+// mounts (ellers kører embedden flere gange og videoen fordobles/overlapper).
+let loaderInjected = false;
+
+// Indlejret Vidalytics-video.
+// - Første load: vendor-loaderen injiceres én gang og kører selv embedden.
+// - Ved SPA-navigation (remount) findes loaderen allerede, så vi kører
+//   embedden én gang mere ind i den nye (tomme) div, så videoen altid vises.
 export default function VidalyticsEmbed() {
   useEffect(() => {
-    let cancelled = false;
-
-    // Kør embedden for den aktuelle div (bruges både ved første load og remount)
-    const runEmbed = () => {
+    // Remount: loaderen findes allerede → kør embedden én gang for den nye div
+    if (window.Vidalytics && window.Vidalytics.Embed) {
       try {
-        if (window.Vidalytics && window.Vidalytics.Embed) {
-          new window.Vidalytics.Embed().run(EMBED_ID);
-          return true;
-        }
+        const el = document.getElementById(EMBED_ID);
+        if (el) el.innerHTML = ""; // ryd evt. gammelt indhold, så den ikke fordobles
+        new window.Vidalytics.Embed().run(EMBED_ID);
       } catch {
         /* ignore */
       }
-      return false;
-    };
+      return;
+    }
 
-    // Er loaderen allerede hentet (fx efter navigation), så kør bare igen
-    if (runEmbed()) return;
+    // Første load: injicér vendor-loaderen (kun én gang). Den kører selv
+    // embedden, når loader + player er hentet – vi kalder IKKE run() her,
+    // så videoen ikke indlæses to gange.
+    if (loaderInjected) return;
+    loaderInjected = true;
 
-    // Ellers: hent Vidalytics-loaderen (kun nødvendigt første gang)
     const s = document.createElement("script");
     s.type = "text/javascript";
     s.text = `
@@ -43,22 +46,6 @@ export default function VidalyticsEmbed() {
 })(window, document, 'Vidalytics', '${EMBED_ID}', '${LOADER_BASE}');
 `;
     document.body.appendChild(s);
-
-    // Fallback: hvis loaderen først bliver klar lidt efter, så prøv at køre
-    // embedden et par gange (dækker hurtige frem-og-tilbage-navigationer).
-    let tries = 0;
-    const iv = setInterval(() => {
-      if (cancelled || tries++ > 20) {
-        clearInterval(iv);
-        return;
-      }
-      if (runEmbed()) clearInterval(iv);
-    }, 250);
-
-    return () => {
-      cancelled = true;
-      clearInterval(iv);
-    };
   }, []);
 
   return (
