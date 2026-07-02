@@ -1295,10 +1295,16 @@ function ArbExample() {
           <span className="font-medium">{kr(budget)}</span>
         </div>
         <div className="flex items-center justify-between py-2 text-sm">
-          <span className="text-[var(--muted)]">Du får igen (uanset udfald)</span>
+          <span className="text-[var(--muted)]">Du får igen (inkl. bonus)</span>
           <span className="font-medium">{kr(r.ret)}</span>
         </div>
       </div>
+
+      <p className="mt-2 text-xs leading-relaxed text-[var(--muted)]">
+        Bemærk: beløbet du får igen er <b>inklusiv bonus</b>. Bonussen kan ikke
+        hæves med det samme – den skal gennemspilles først – så det er ikke ren,
+        udbetalbar profit endnu.
+      </p>
 
       <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-4 text-sm leading-relaxed text-[var(--ink-2)]">
         <b className="text-[var(--ink)]">Sådan ender du på profitten:</b> Dit
